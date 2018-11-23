@@ -1,0 +1,3 @@
+"config_id"	"input_fasta"	"reference"	"threads"	"score_threshold"
+"#cfg1"	"subsamples/fa_ESCs-2xDpnII.fasta.gz"	"/data0/thom/mm9/mm9.fa"	"6"	"15"
+"cfg2"	"subsamples/fa_ESCs-2xDpnII.fasta.gz"	"ref_fake/fakeref.fa"	"6"	"5"

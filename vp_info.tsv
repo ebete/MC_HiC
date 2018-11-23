@@ -1,0 +1,3 @@
+run_id	res_cutters	genome	seq_file_indices	library_type	platform_machine	expriment_date	original_name
+r002	DpnII	mm9	r002	1D	GridION	26042018	deLaatUDNHiC2
+fake	DpnII	mm9	fake	1D	GridION	16112018	deLaatUDNHiC2
