@@ -26,7 +26,7 @@ def load_configs(config_file):
     cfg = {}
     with open(config_file, "r", newline="") as fin:
         handle = csv.reader(fin, delimiter="\t")
-        next(handle)  # skip header
+        colnames = next(handle, None)
         for row in handle:
             try:
                 if not row or len(row) < 4 or row[0][0] == "#":
@@ -36,7 +36,8 @@ def load_configs(config_file):
             cfg[row[0]] = {
                 "fasta": get_fasta_splits(row[1]),
                 "ref": row[2],
-                "args": tuple(row[3:])
+                # create key, value pairs of the csv headers and the parameter values
+                "args": {k: v for k, v in zip(colnames[3:], row[3:])}
             }
             logging.debug("Found config %s: %s", row[0], cfg[row[0]])
     return cfg
@@ -53,6 +54,7 @@ def run_aligners(config, output_dir):
     :param output_dir: Path to write the resulting BAM files to
     """
     for cfg_name, cfg_params in config.items():
+        logging.info("Running configuration %s ...", cfg_name)
         fasta_input = cfg_params["fasta"][0]
 
         # BWA
@@ -68,9 +70,14 @@ def run_aligners(config, output_dir):
 
 def run_bwa(in_fasta, in_reference, out_bam, params):
     logging.info("Executing BWA ...")
-    align_out = subprocess.Popen(
-        ("bwa", "mem", "-t", params[0], "-T", params[1], "-C", in_reference, in_fasta),
-        stdout=subprocess.PIPE, env=_exec_env)
+    # @formatter:off
+    align_out = subprocess.Popen(("bwa", "mem",
+        "-t", params["threads"],  # number of processing threads
+        "-T", params["score_threshold"],  # output alignment score threshold
+        "-C", in_reference,  # reference genome
+        in_fasta  # FASTA with reads
+    ), stdout=subprocess.PIPE, env=_exec_env)
+    # @formatter:on
     logging.info(" ".join(align_out.args))
 
     export_to_bam(align_out.stdout, out_bam)
@@ -83,10 +90,26 @@ def run_bwa(in_fasta, in_reference, out_bam, params):
 
 def run_bowtie2(in_fasta, in_reference, out_bam, params):
     logging.info("Executing Bowtie2 ...")
-    align_out = subprocess.Popen(
-        ("bowtie2", "--threads", params[0], "-x", in_reference, "-U", in_fasta, "-f", "--local",
-         "--very-sensitive-local", "-a", "-t"),
-        stdout=subprocess.PIPE, env=_exec_env)
+    # @formatter:off
+    # functions: (C)onstant (L)inear (S)qrt lo(G)_e
+    align_out = subprocess.Popen(("bowtie2",
+        "--threads", params["threads"],  # number of processing threads
+        "-x", in_reference,  # reference genome
+        "-U", in_fasta, "-f",  # FASTA with reads
+        "--local",  # use Smith-Waterman alignment
+        "-D", params["consec_seed_fails"],  # consecutive seed extensions that may fail
+        "-R", params["max_reseeds"],  # max re-seeds allowed
+        "-N", params["seed_mismatch"],  # max mismatches in seeds
+        "-L", params["seed_length"],  # length of seeds
+        "-i", params["seed_interval_fun"],  # function used to calculate intervals between seeds
+        "--ma", params["sw_match"],  # match bonus during alignment
+        "--score-min", params["min_score_fun"],  # function used to calculate miniumum alignment score
+        "--rdg", params["query_gap"],  # read gap open/extension penalties
+        "--rfg", params["ref_gap"],  # reference gap open/extension penalties
+        "-a",  # report all valid alignments (very slow)
+        "-t",  # write run times to stderr
+    ), stdout=subprocess.PIPE, env=_exec_env)
+    # @formatter:on
     logging.info(" ".join(align_out.args))
 
     export_to_bam(align_out.stdout, out_bam)
@@ -100,8 +123,13 @@ def run_bowtie2(in_fasta, in_reference, out_bam, params):
 def run_last(in_fasta, in_reference, out_bam, params):
     logging.info("Executing LAST ...")
     # LAST aligner
-    last_out = subprocess.Popen(("lastal", "-P", params[0], in_reference, in_fasta), stdout=subprocess.PIPE,
-                                env=_exec_env)
+    # @formatter:off
+    last_out = subprocess.Popen(("lastal",
+        "-P", params["threads"],  # number of processing threads
+        in_reference,  # reference genome
+        in_fasta,  # FASTA with reads
+    ), stdout=subprocess.PIPE, env=_exec_env)
+    # @formatter:on
     logging.info(" ".join(last_out.args))
     # estimate split alignments
     split_out = subprocess.Popen(("last-split"), stdin=last_out.stdout, stdout=subprocess.PIPE, env=_exec_env)

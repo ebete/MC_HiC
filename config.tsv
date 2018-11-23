@@ -1,3 +1,2 @@
-"config_id"	"input_fasta"	"reference"	"threads"	"score_threshold"
-"#cfg1"	"subsamples/fa_ESCs-2xDpnII.fasta.gz"	"/data0/thom/mm9/mm9.fa"	"6"	"15"
-"cfg2"	"subsamples/fa_ESCs-2xDpnII.fasta.gz"	"ref_fake/fakeref.fa"	"6"	"5"
+"config_id"	"input_fasta"                        	"reference"          	"threads"	"score_threshold"	"seed_mismatch"	"seed_length"	"seed_interval_fun"	"consec_seed_fails"	"max_reseeds"	"sw_match"	"min_score_fun"	"query_gap"	"ref_gap"
+"cfg2"     	"subsamples/fa_ESCs-2xDpnII.fasta.gz"	"ref_fake/fakeref.fa"	"6"      	"5"              	"0"            	"20"         	"S,1,0.5"          	"15	"              	"2"          	"2"       	"G,20,8"       	"5,3"      	"5,3"
