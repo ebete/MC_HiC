@@ -55,14 +55,15 @@ def run_aligners(config, output_dir):
     for cfg_name, cfg_params in config.items():
         fasta_input = cfg_params["fasta"][0]
 
-        logging.debug("%s %s", cfg_name, cfg_params)
-
         # BWA
         bam_out = os.path.join(output_dir, "{}_{}.bam".format(cfg_name, "bwa"))
         run_bwa(fasta_input, cfg_params["ref"], bam_out, cfg_params["args"])
         # Bowtie2
         bam_out = os.path.join(output_dir, "{}_{}.bam".format(cfg_name, "bowtie2"))
         run_bowtie2(fasta_input, cfg_params["ref"], bam_out, cfg_params["args"])
+        # LAST
+        bam_out = os.path.join(output_dir, "{}_{}.bam".format(cfg_name, "last"))
+        run_last(fasta_input, cfg_params["ref"], bam_out, cfg_params["args"])
 
 
 def run_bwa(in_fasta, in_reference, out_bam, params):
@@ -77,6 +78,7 @@ def run_bwa(in_fasta, in_reference, out_bam, params):
 
     if align_out.returncode != 0:
         raise subprocess.SubprocessError("BWA exited with a non-zero status ({})".format(align_out.returncode))
+    logging.info("BWA alignment file written to %s", out_bam)
 
 
 def run_bowtie2(in_fasta, in_reference, out_bam, params):
@@ -92,6 +94,33 @@ def run_bowtie2(in_fasta, in_reference, out_bam, params):
 
     if align_out.returncode != 0:
         raise subprocess.SubprocessError("Bowtie2 exited with a non-zero status ({})".format(align_out.returncode))
+    logging.info("Bowtie2 alignment file written to %s", out_bam)
+
+
+def run_last(in_fasta, in_reference, out_bam, params):
+    logging.info("Executing LAST ...")
+    # LAST aligner
+    last_out = subprocess.Popen(("lastal", "-P", params[0], in_reference, in_fasta), stdout=subprocess.PIPE,
+                                env=_exec_env)
+    logging.info(" ".join(last_out.args))
+    # estimate split alignments
+    split_out = subprocess.Popen(("last-split"), stdin=last_out.stdout, stdout=subprocess.PIPE, env=_exec_env)
+    logging.info(" ".join(split_out.args))
+    # convert MAF+ to SAM
+    maf_out = subprocess.Popen(("maf-convert", "-n", "sam", "-"), stdin=split_out.stdout, stdout=subprocess.PIPE,
+                               env=_exec_env)
+    logging.info(" ".join(maf_out.args))
+    # add @SQ header to SAM (reference sequence)
+    samtools_out = subprocess.Popen(("samtools", "view", "-bt", in_reference + ".fai", "-"), stdin=maf_out.stdout,
+                                    stdout=subprocess.PIPE, env=_exec_env)
+    logging.info(" ".join(samtools_out.args))
+
+    export_to_bam(samtools_out.stdout, out_bam)
+    last_out.wait()
+
+    if last_out.returncode != 0:
+        raise subprocess.SubprocessError("LAST exited with a non-zero status ({})".format(last_out.returncode))
+    logging.info("LAST alignment file written to %s", out_bam)
 
 
 def export_to_bam(mapper_output, out_bam):
