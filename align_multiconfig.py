@@ -74,8 +74,14 @@ def run_bwa(in_fasta, out_bam, params):
     # @formatter:off
     align_out = subprocess.Popen(("bwa", "mem",
         "-t", params["threads"],  # number of processing threads
+        "-k", params["seed_length"],  # minimum seed length
+        "-A", params["sw_match"],  # match score
+        "-B", params["sw_mismatch"],  # mismatch score
+        "-O", params["query_gap_open"],  # gap open penalty
+        "-E", params["query_gap_extend"],  # gap extension penalty
+        "-w", params["max_gap_length"],  # maximum gap length
         "-T", params["score_threshold"],  # output alignment score threshold
-        "-C", params["reference"],  # reference genome
+        params["reference"],  # reference genome
         in_fasta  # FASTA with reads
     ), stdout=subprocess.PIPE, env=_exec_env)
     # @formatter:on
@@ -105,10 +111,10 @@ def run_bowtie2(in_fasta, out_bam, params):
         "-i", params["seed_interval_fun"],  # function used to calculate intervals between seeds
         "--ma", params["sw_match"],  # match bonus during alignment
         "--score-min", params["min_score_fun"],  # function used to calculate miniumum alignment score
-        "--rdg", params["query_gap"],  # read gap open/extension penalties
-        "--rfg", params["ref_gap"],  # reference gap open/extension penalties
+        "--rdg", "{},{}".format(params["query_gap_open"], params["query_gap_extend"]),  # read gap open/extension penalties
+        "--rfg", "{},{}".format(params["ref_gap_open"], params["ref_gap_extend"]),  # reference gap open/extension penalties
         #"-a",  # report all valid alignments (very slow)
-        "-t",  # write run times to stderr
+        "-t"  # write run times to stderr
     ), stdout=subprocess.PIPE, env=_exec_env)
     # @formatter:on
     logging.info(" ".join(align_out.args))
@@ -127,13 +133,24 @@ def run_last(in_fasta, out_bam, params):
     # @formatter:off
     last_out = subprocess.Popen(("lastal",
         "-P", params["threads"],  # number of processing threads
+        "-a", params["query_gap_open"],  # gap open penalty
+        "-b", params["query_gap_extend"],  # gap extension penalty
+        "-A", params["ref_gap_open"],  # reference gap open penalty
+        "-B", params["ref_gap_extend"],  # reference gap extension penalty
+        "-l", params["seed_length"],  # minimum length of seeds
+        "-T", "0",  # local alignment
+        "-s", "2",  # look on both strands
         params["reference"],  # reference genome
-        in_fasta,  # FASTA with reads
+        in_fasta  # FASTA with reads
     ), stdout=subprocess.PIPE, env=_exec_env)
     # @formatter:on
     logging.info(" ".join(last_out.args))
     # estimate split alignments
-    split_out = subprocess.Popen(("last-split"), stdin=last_out.stdout, stdout=subprocess.PIPE, env=_exec_env)
+    # @formatter:off
+    split_out = subprocess.Popen(("last-split",
+        "-d", "2"  # strandedness is unknown
+    ), stdin=last_out.stdout, stdout=subprocess.PIPE, env=_exec_env)
+    # @formatter:on
     logging.info(" ".join(split_out.args))
     # convert MAF+ to SAM
     maf_out = subprocess.Popen(("maf-convert", "-n", "sam", "-"), stdin=split_out.stdout, stdout=subprocess.PIPE,
