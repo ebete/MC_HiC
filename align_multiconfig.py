@@ -26,19 +26,18 @@ def load_configs(config_file):
     cfg = {}
     with open(config_file, "r", newline="") as fin:
         handle = csv.reader(fin, delimiter="\t")
-        colnames = next(handle, None)
+        colnames = [str(x).strip().lower() for x in next(handle, None)]
         for row in handle:
             try:
                 if not row or len(row) < 4 or row[0][0] == "#":
                     continue
             except IndexError:
                 continue
-            cfg[row[0]] = {
-                "fasta": get_fasta_splits(row[1]),
-                "ref": row[2],
-                # create key, value pairs of the csv headers and the parameter values
-                "args": {k: v for k, v in zip(colnames[3:], row[3:])}
-            }
+            # create key, value pairs of the csv headers and the parameter values
+            cfg[row[0]] = {k: str(v).strip() for k, v in zip(colnames[1:], row[1:])}
+            # Find and add all the paths to the FASTA files
+            cfg[row[0]]["input_fasta"] = get_fasta_splits(cfg[row[0]]["input_fasta"])
+
             logging.debug("Found config %s: %s", row[0], cfg[row[0]])
     return cfg
 
@@ -55,26 +54,28 @@ def run_aligners(config, output_dir):
     """
     for cfg_name, cfg_params in config.items():
         logging.info("Running configuration %s ...", cfg_name)
-        fasta_input = cfg_params["fasta"][0]
+        fasta_input = cfg_params["input_fasta"][0]
 
-        # BWA
-        bam_out = os.path.join(output_dir, "{}_{}.bam".format(cfg_name, "bwa"))
-        run_bwa(fasta_input, cfg_params["ref"], bam_out, cfg_params["args"])
-        # Bowtie2
-        bam_out = os.path.join(output_dir, "{}_{}.bam".format(cfg_name, "bowtie2"))
-        run_bowtie2(fasta_input, cfg_params["ref"], bam_out, cfg_params["args"])
-        # LAST
-        bam_out = os.path.join(output_dir, "{}_{}.bam".format(cfg_name, "last"))
-        run_last(fasta_input, cfg_params["ref"], bam_out, cfg_params["args"])
+        if "bwa" in cfg_params["aligner"]:
+            bam_out = os.path.join(output_dir, "{}_{}.bam".format(cfg_name, "bwa"))
+            run_bwa(fasta_input, bam_out, cfg_params)
+        elif "bowtie" in cfg_params["aligner"]:
+            bam_out = os.path.join(output_dir, "{}_{}.bam".format(cfg_name, "bowtie2"))
+            run_bowtie2(fasta_input, bam_out, cfg_params)
+        elif "last" in cfg_params["aligner"]:
+            bam_out = os.path.join(output_dir, "{}_{}.bam".format(cfg_name, "last"))
+            run_last(fasta_input, bam_out, cfg_params)
+        else:
+            logging.warning("Unknown aligner %s specified. Skipping %s ...", cfg_params["aligner"], cfg_name)
 
 
-def run_bwa(in_fasta, in_reference, out_bam, params):
+def run_bwa(in_fasta, out_bam, params):
     logging.info("Executing BWA ...")
     # @formatter:off
     align_out = subprocess.Popen(("bwa", "mem",
         "-t", params["threads"],  # number of processing threads
         "-T", params["score_threshold"],  # output alignment score threshold
-        "-C", in_reference,  # reference genome
+        "-C", params["reference"],  # reference genome
         in_fasta  # FASTA with reads
     ), stdout=subprocess.PIPE, env=_exec_env)
     # @formatter:on
@@ -88,13 +89,13 @@ def run_bwa(in_fasta, in_reference, out_bam, params):
     logging.info("BWA alignment file written to %s", out_bam)
 
 
-def run_bowtie2(in_fasta, in_reference, out_bam, params):
+def run_bowtie2(in_fasta, out_bam, params):
     logging.info("Executing Bowtie2 ...")
     # @formatter:off
     # functions: (C)onstant (L)inear (S)qrt lo(G)_e
     align_out = subprocess.Popen(("bowtie2",
         "--threads", params["threads"],  # number of processing threads
-        "-x", in_reference,  # reference genome
+        "-x", params["reference"],  # reference genome
         "-U", in_fasta, "-f",  # FASTA with reads
         "--local",  # use Smith-Waterman alignment
         "-D", params["consec_seed_fails"],  # consecutive seed extensions that may fail
@@ -106,7 +107,7 @@ def run_bowtie2(in_fasta, in_reference, out_bam, params):
         "--score-min", params["min_score_fun"],  # function used to calculate miniumum alignment score
         "--rdg", params["query_gap"],  # read gap open/extension penalties
         "--rfg", params["ref_gap"],  # reference gap open/extension penalties
-        "-a",  # report all valid alignments (very slow)
+        #"-a",  # report all valid alignments (very slow)
         "-t",  # write run times to stderr
     ), stdout=subprocess.PIPE, env=_exec_env)
     # @formatter:on
@@ -120,13 +121,13 @@ def run_bowtie2(in_fasta, in_reference, out_bam, params):
     logging.info("Bowtie2 alignment file written to %s", out_bam)
 
 
-def run_last(in_fasta, in_reference, out_bam, params):
+def run_last(in_fasta, out_bam, params):
     logging.info("Executing LAST ...")
     # LAST aligner
     # @formatter:off
     last_out = subprocess.Popen(("lastal",
         "-P", params["threads"],  # number of processing threads
-        in_reference,  # reference genome
+        params["reference"],  # reference genome
         in_fasta,  # FASTA with reads
     ), stdout=subprocess.PIPE, env=_exec_env)
     # @formatter:on
@@ -139,7 +140,8 @@ def run_last(in_fasta, in_reference, out_bam, params):
                                env=_exec_env)
     logging.info(" ".join(maf_out.args))
     # add @SQ header to SAM (reference sequence)
-    samtools_out = subprocess.Popen(("samtools", "view", "-bt", in_reference + ".fai", "-"), stdin=maf_out.stdout,
+    samtools_out = subprocess.Popen(("samtools", "view", "-bt", params["reference"] + ".fai", "-"),
+                                    stdin=maf_out.stdout,
                                     stdout=subprocess.PIPE, env=_exec_env)
     logging.info(" ".join(samtools_out.args))
 
