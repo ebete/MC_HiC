@@ -28,7 +28,7 @@ def load_configs(config_file):
     cfg = {}
     with open(config_file, "r", newline="") as fin:
         handle = csv.reader(fin, delimiter="\t")
-        colnames = [str(x).strip().lower() for x in next(handle, None)]
+        colnames = [str(x).strip().lower() for x in next(handle, [])]
         for row in handle:
             try:
                 if not row or len(row) < 4 or row[0][0] == "#":
