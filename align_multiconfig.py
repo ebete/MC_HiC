@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from __future__ import print_function
+
 import argparse
 import csv
 import logging
@@ -42,7 +44,7 @@ def load_configs(config_file):
     return cfg
 
 
-def run_aligners(config, output_dir):
+def run_aligners(config, output_dir, force_run):
     """
     Run the aligners using the given configuration.
 
@@ -56,14 +58,17 @@ def run_aligners(config, output_dir):
         logging.info("Running configuration %s ...", cfg_name)
         fasta_input = cfg_params["input_fasta"][0]
 
+        bam_out = os.path.join(output_dir, "{}_{}.bam".format(cfg_name, cfg_params["aligner"]))
+        if not force_run and os.path.exists(bam_out):
+            logging.warning("File %s exists; %s will be skipped. Use --force-run to override this check.", bam_out,
+                            cfg_name)
+            continue
+
         if "bwa" in cfg_params["aligner"]:
-            bam_out = os.path.join(output_dir, "{}_{}.bam".format(cfg_name, "bwa"))
             run_bwa(fasta_input, bam_out, cfg_params)
         elif "bowtie" in cfg_params["aligner"]:
-            bam_out = os.path.join(output_dir, "{}_{}.bam".format(cfg_name, "bowtie2"))
             run_bowtie2(fasta_input, bam_out, cfg_params)
         elif "last" in cfg_params["aligner"]:
-            bam_out = os.path.join(output_dir, "{}_{}.bam".format(cfg_name, "last"))
             run_last(fasta_input, bam_out, cfg_params)
         else:
             logging.warning("Unknown aligner %s specified. Skipping %s ...", cfg_params["aligner"], cfg_name)
@@ -85,7 +90,7 @@ def run_bwa(in_fasta, out_bam, params):
         in_fasta  # FASTA with reads
     ), stdout=subprocess.PIPE, env=_exec_env)
     # @formatter:on
-    logging.info(" ".join(align_out.args))
+    print(" ".join(align_out.args))
 
     export_to_bam(align_out.stdout, out_bam)
     align_out.wait()
@@ -117,7 +122,7 @@ def run_bowtie2(in_fasta, out_bam, params):
         "-t"  # write run times to stderr
     ), stdout=subprocess.PIPE, env=_exec_env)
     # @formatter:on
-    logging.info(" ".join(align_out.args))
+    print(" ".join(align_out.args))
 
     export_to_bam(align_out.stdout, out_bam)
     align_out.wait()
@@ -144,23 +149,23 @@ def run_last(in_fasta, out_bam, params):
         in_fasta  # FASTA with reads
     ), stdout=subprocess.PIPE, env=_exec_env)
     # @formatter:on
-    logging.info(" ".join(last_out.args))
+    print(" ".join(last_out.args))
     # estimate split alignments
     # @formatter:off
     split_out = subprocess.Popen(("last-split",
         "-d", "2"  # strandedness is unknown
     ), stdin=last_out.stdout, stdout=subprocess.PIPE, env=_exec_env)
     # @formatter:on
-    logging.info(" ".join(split_out.args))
+    print(" ".join(split_out.args))
     # convert MAF+ to SAM
     maf_out = subprocess.Popen(("maf-convert", "-n", "sam", "-"), stdin=split_out.stdout, stdout=subprocess.PIPE,
                                env=_exec_env)
-    logging.info(" ".join(maf_out.args))
+    print(" ".join(maf_out.args))
     # add @SQ header to SAM (reference sequence)
     samtools_out = subprocess.Popen(("samtools", "view", "-bt", params["reference"] + ".fai", "-"),
                                     stdin=maf_out.stdout,
                                     stdout=subprocess.PIPE, env=_exec_env)
-    logging.info(" ".join(samtools_out.args))
+    print(" ".join(samtools_out.args))
 
     export_to_bam(samtools_out.stdout, out_bam)
     last_out.wait()
@@ -183,13 +188,13 @@ def export_to_bam(mapper_output, out_bam):
     with open(out_bam, "wb") as bamfile:
         bam_unsorted = subprocess.Popen(("samtools", "view", "-b", "-"), stdin=mapper_output, stdout=subprocess.PIPE,
                                         env=_exec_env)
-        logging.info(" ".join(bam_unsorted.args))
+        print(" ".join(bam_unsorted.args))
         bam_sorted = subprocess.Popen(("samtools", "sort", "-"), stdin=bam_unsorted.stdout, stdout=bamfile,
                                       env=_exec_env)
-        logging.info(" ".join(bam_sorted.args))
+        print(" ".join(bam_sorted.args))
         bam_sorted.wait()
         bam_index = subprocess.Popen(("samtools", "index", out_bam), stdout=subprocess.DEVNULL, env=_exec_env)
-        logging.info(" ".join(bam_index.args))
+        print(" ".join(bam_index.args))
         bam_index.wait()
 
 
@@ -223,9 +228,10 @@ if __name__ == '__main__':
     parser.add_argument("input_config", help="Input configuration file", metavar="CONFIG", action="store", type=str)
     parser.add_argument("--output", "-o", help="BAM output directory", metavar="DIR", action="store", type=str,
                         default="./")
+    parser.add_argument("--force-run", "-f", help="Force-overwrite existing BAM result files", action="store_true")
     args = parser.parse_args()
 
     cfg = load_configs(args.input_config)
-    run_aligners(cfg, args.output)
+    run_aligners(cfg, args.output, args.force_run)
 
     logging.shutdown()
