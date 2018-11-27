@@ -27,7 +27,7 @@ def load_configs(config_file):
     logging.info("Parsing configuration file %s ...", config_file)
     cfg = {}
     with open(config_file, "r", newline="") as fin:
-        handle = csv.reader(fin, delimiter="\t")
+        handle = csv.reader(fin, delimiter=";")
         colnames = [str(x).strip().lower() for x in next(handle, [])]
         for row in handle:
             try:
