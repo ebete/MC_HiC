@@ -6,6 +6,7 @@ import os
 import glob
 
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 import numpy as np
 import pandas as pd
 import pysam
@@ -214,12 +215,22 @@ def plot_frequencies(frequencies):
                         fragments per read mapped.
     """
     logging.info("Generating bar plot")
-    frequencies.plot(kind="bar")
-    plt.title("Mapped fragments per read")
-    plt.xlabel("Mapped fragments")
-    plt.ylabel("Frequency ($\\log_{10}$)")
-    plt.semilogy()
-    plt.show()
+    with PdfPages("plot.pdf") as pdf:
+    	# log scale
+        frequencies.plot(kind="bar")
+        plt.title("Mapped fragments per read")
+        plt.xlabel("Mapped fragments")
+        plt.ylabel("Frequency ($\\log_{10}$)")
+        plt.semilogy()
+        pdf.savefig(bbox_inches="tight")
+        plt.close()
+        # linear scale
+        frequencies.plot(kind="bar")
+        plt.title("Mapped fragments per read")
+        plt.xlabel("Mapped fragments")
+        plt.ylabel("Frequency")
+        pdf.savefig(bbox_inches="tight")
+        plt.close()
 
 
 if __name__ == "__main__":
