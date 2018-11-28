@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
 import argparse
+import glob
 import logging
 import os
-import glob
 
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
 import numpy as np
 import pandas as pd
 import pysam
+from matplotlib.backends.backend_pdf import PdfPages
 
 plt.style.use("ggplot")
 
@@ -216,7 +216,7 @@ def plot_frequencies(frequencies):
     """
     logging.info("Generating bar plot")
     with PdfPages("plot.pdf") as pdf:
-    	# log scale
+        # log scale
         frequencies.plot(kind="bar")
         plt.title("Mapped fragments per read")
         plt.xlabel("Mapped fragments")

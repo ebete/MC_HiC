@@ -107,7 +107,7 @@ def run_bowtie2(in_fasta, out_bam, params):
     align_out = subprocess.Popen(("bowtie2",
         "--threads", params["threads"],  # number of processing threads
         "-x", params["reference"],  # reference genome
-        "-U", in_fasta, "-f",  # FASTA with reads
+        "-U", in_fasta, "-q" if "fastq" in in_fasta.split(".") else "-f",  # FASTA/Q with reads
         "--local",  # use Smith-Waterman alignment
         "-D", params["consec_seed_fails"],  # consecutive seed extensions that may fail
         "-R", params["max_reseeds"],  # max re-seeds allowed
@@ -145,6 +145,7 @@ def run_last(in_fasta, out_bam, params):
         "-l", params["seed_length"],  # minimum length of seeds
         "-T", "0",  # local alignment
         "-s", "2",  # look on both strands
+        "-Q", "1" if "fastq" in in_fasta.split(".") else "0",  # input data type
         params["reference"],  # reference genome
         in_fasta  # FASTA with reads
     ), stdout=subprocess.PIPE, env=_exec_env)
@@ -200,7 +201,8 @@ def export_to_bam(mapper_output, out_bam):
 
 def get_fasta_splits(split_path):
     """
-    Finds the splitted FASTA files that match the path.
+    Finds the splitted FASTA files that match the path. If no splits are found,
+    it will return the given path again.
 
     :type split_path: str
     :param split_path: Path to the splitted FASTA files
@@ -217,7 +219,7 @@ def get_fasta_splits(split_path):
             break
         fasta_splits.append(fasta_path)
         n += 1
-    return fasta_splits
+    return fasta_splits if len(fasta_splits) > 0 else [split_path]
 
 
 if __name__ == '__main__':
