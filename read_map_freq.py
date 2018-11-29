@@ -9,9 +9,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pysam
+import seaborn as sns
 from matplotlib.backends.backend_pdf import PdfPages
 
 plt.style.use("ggplot")
+sns.set()
 
 
 class WeightedLinkedList(object):
@@ -206,16 +208,19 @@ def merge_and_count_freq(reads, dist_cutoff):
     return pd.DataFrame(bins[1:, :], columns=bins[0])
 
 
-def plot_frequencies(frequencies):
+def plot_frequencies(frequencies, outfile):
     """
     Create a matplotlib bar plot from a pandas DataFrame.
 
     :type frequencies: pd.DataFrame
     :param frequencies: DataFrame containing the frequencies of the number of
                         fragments per read mapped.
+
+    :type outfile: str
+    :param outfile: Location of the PDF output file.
     """
-    logging.info("Generating bar plot")
-    with PdfPages("plot.pdf") as pdf:
+    logging.info("Generating bar plot and writing to %s", outfile)
+    with PdfPages(outfile) as pdf:
         # log scale
         frequencies.plot(kind="bar")
         plt.title("Mapped fragments per read")
@@ -231,6 +236,10 @@ def plot_frequencies(frequencies):
         plt.ylabel("Frequency")
         pdf.savefig(bbox_inches="tight")
         plt.close()
+        # annotated heatmap
+        df = (frequencies / frequencies.sum()).transpose()
+        sns.heatmap(df * 100, annot=True, fmt=".0f", vmin=0, vmax=100, square=True, cmap="inferno")
+        pdf.savefig(bbox_inches="tight")
 
 
 if __name__ == "__main__":
@@ -240,6 +249,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input_sam", help="Input SAM/BAM files.", metavar="INFILE", action="store", type=str,
                         nargs="+")
+    parser.add_argument("--img-output", "-o", help="Output location of the PDF images", metavar="PDF", action="store",
+                        type=str)
     parser.add_argument("--distance-cutoff", "-d", help="Minimum distance between two fragments before considering "
                                                         "them as separate",
                         metavar="CUTOFF", action="store", type=int, default=1000)
@@ -256,10 +267,10 @@ if __name__ == "__main__":
             bins = pd.concat([bins, df], axis=0, ignore_index=True)
             xlab.append(os.path.basename(samfile))
 
-    bins.fillna(0)
+    bins.fillna(0, inplace=True)
     bins = bins.transpose()
     bins.columns = xlab
 
-    plot_frequencies(bins)
+    plot_frequencies(bins, args.img_output)
 
     logging.shutdown()
