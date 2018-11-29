@@ -78,6 +78,7 @@ def run_bwa(in_fasta, out_bam, params):
     logging.info("Executing BWA ...")
     # @formatter:off
     align_out = subprocess.Popen(("bwa", "mem",
+        "-x", "ont2d",  # Oxford Nanopore 2D reads
         "-t", params["threads"],  # number of processing threads
         "-k", params["seed_length"],  # minimum seed length
         "-A", params["sw_match"],  # match score
