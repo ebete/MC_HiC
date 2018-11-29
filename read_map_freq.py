@@ -214,7 +214,7 @@ def merge_and_count_freq(reads, dist_cutoff):
 
 def plot_frequencies(frequencies, outfile):
     """
-    Create a matplotlib bar plot from a pandas DataFrame.
+    Create matplotlib plots from a pandas DataFrame.
 
     :type frequencies: pd.DataFrame
     :param frequencies: DataFrame containing the frequencies of the number of
@@ -243,6 +243,10 @@ def plot_frequencies(frequencies, outfile):
         # annotated heatmap
         df = (frequencies / frequencies.sum()).transpose()
         sns.heatmap(df * 100, annot=True, fmt=".0f", vmin=0, vmax=100, square=True, cmap="inferno")
+        pdf.savefig(bbox_inches="tight")
+        plt.close()
+        # cumulative heatmap
+        sns.heatmap(df.cumsum(axis=1) * 100, annot=True, fmt=".0f", vmin=0, vmax=100, square=True, cmap="inferno")
         pdf.savefig(bbox_inches="tight")
 
 
