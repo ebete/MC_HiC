@@ -155,7 +155,7 @@ class WeightedLinkedListNode(object):
             .format(self.node_id, self.get_weight(), self.fragment_start, self.fragment_end)
 
 
-def read_sam(fname, mapq_cutoff=0):
+def read_sam(fname, mapq_cutoff=0, sam_region="."):
     """
     Parse reads from a SAM/BAM file and Create a WeightedLinkedList per read.
 
@@ -165,6 +165,9 @@ def read_sam(fname, mapq_cutoff=0):
     :type mapq_cutoff: int
     :param mapq_cutoff: Minimum mapping quality (MAPQ/MQ) before considering a mapped fragment.
 
+    :type sam_region: str
+    :param sam_region: Region in SAM format to limit the reading to.
+
     :rtype dict
     :return: Dictionary containing a WeightedLinkedList associated with the read.
     """
@@ -172,10 +175,11 @@ def read_sam(fname, mapq_cutoff=0):
 
     samfile = pysam.AlignmentFile(fname, "r")
     logging.info("Reading alignment file %s ...", fname)
-    for read in samfile.fetch():
+    for read in samfile.fetch(region=sam_region):
         if read.mapq < mapq_cutoff:
             logging.debug("Skipping %s (MAPQ: %d)", read.qname, read.mapq)
             continue
+
         logging.debug("Read %s found at %d:%d", read.qname, read.reference_start, read.reference_end)
         mapped_reads.setdefault(read.qname, WeightedLinkedList()).insert_head(read.reference_start, read.reference_end)
     samfile.close()
@@ -256,13 +260,15 @@ if __name__ == "__main__":
                         metavar="CUTOFF", action="store", type=int, default=1000)
     parser.add_argument("--minimum-mapq", "-q", help="Minimum MAPQ that a fragment needs to have", metavar="MQ",
                         action="store", type=int, default=1)
+    parser.add_argument("--region", "-r", help="Limit read to specific region", metavar="REGION",
+                        action="store", type=str, default=".")
     args = parser.parse_args()
 
     bins = pd.DataFrame()
     xlab = []
     for globfile in args.input_sam:
         for samfile in glob.iglob(globfile):
-            mapped_reads = read_sam(samfile, args.minimum_mapq)
+            mapped_reads = read_sam(samfile, args.minimum_mapq, args.region)
             df = merge_and_count_freq(mapped_reads, args.distance_cutoff)
             bins = pd.concat([bins, df], axis=0, ignore_index=True)
             xlab.append(os.path.basename(samfile))
