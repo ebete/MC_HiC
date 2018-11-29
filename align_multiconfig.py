@@ -135,44 +135,47 @@ def run_bowtie2(in_fasta, out_bam, params):
 def run_last(in_fasta, out_bam, params):
     logging.info("Executing LAST ...")
     # LAST aligner
-    # @formatter:off
-    last_out = subprocess.Popen(("lastal",
-        "-P", params["threads"],  # number of processing threads
-        "-a", params["query_gap_open"],  # gap open penalty
-        "-b", params["query_gap_extend"],  # gap extension penalty
-        "-A", params["ref_gap_open"],  # reference gap open penalty
-        "-B", params["ref_gap_extend"],  # reference gap extension penalty
-        "-l", params["seed_length"],  # minimum length of seeds
-        "-T", "0",  # local alignment
-        "-s", "2",  # look on both strands
-        "-Q", "1" if "fastq" in in_fasta.split(".") else "0",  # input data type
-        params["reference"],  # reference genome
-        in_fasta  # FASTA with reads
-    ), stdout=subprocess.PIPE, env=_exec_env)
-    # @formatter:on
-    print(" ".join(last_out.args))
+    with open(out_bam + ".maf", "w") as tmp_maf:
+        # @formatter:off
+        last_out = subprocess.Popen(("lastal",
+            "-P", params["threads"],  # number of processing threads
+            "-a", params["query_gap_open"],  # gap open penalty
+            "-b", params["query_gap_extend"],  # gap extension penalty
+            "-A", params["ref_gap_open"],  # reference gap open penalty
+            "-B", params["ref_gap_extend"],  # reference gap extension penalty
+            "-l", params["seed_length"],  # minimum length of seeds
+            "-T", "0",  # local alignment
+            "-s", "2",  # look on both strands
+            "-Q", "1" if "fastq" in in_fasta.split(".") else "0",  # input data type
+            "-e", params["score_threshold"],  # minimum alignment score
+            params["reference"],  # reference genome
+            in_fasta  # FASTA with reads
+        ), stdout=tmp_maf, env=_exec_env)
+        # @formatter:on
+        print(" ".join(last_out.args))
+        last_out.wait()
     # estimate split alignments
-    # @formatter:off
-    split_out = subprocess.Popen(("last-split",
-        "-d", "2"  # strandedness is unknown
-    ), stdin=last_out.stdout, stdout=subprocess.PIPE, env=_exec_env)
-    # @formatter:on
-    print(" ".join(split_out.args))
-    # convert MAF+ to SAM
-    maf_out = subprocess.Popen(("maf-convert", "-n", "sam", "-"), stdin=split_out.stdout, stdout=subprocess.PIPE,
-                               env=_exec_env)
-    print(" ".join(maf_out.args))
-    # add @SQ header to SAM (reference sequence)
-    samtools_out = subprocess.Popen(("samtools", "view", "-bt", params["reference"] + ".fai", "-"),
-                                    stdin=maf_out.stdout,
-                                    stdout=subprocess.PIPE, env=_exec_env)
-    print(" ".join(samtools_out.args))
+    with open(out_bam + ".maf", "r") as tmp_maf:
+        # @formatter:off
+        split_out = subprocess.Popen(("last-split",
+            "-d", "2"  # strandedness is unknown
+        ), stdin=tmp_maf, stdout=subprocess.PIPE, env=_exec_env)
+        # @formatter:on
+        print(" ".join(split_out.args))
+        # convert MAF+ to SAM
+        maf_out = subprocess.Popen(("maf-convert", "-n", "sam", "-"), stdin=split_out.stdout, stdout=subprocess.PIPE,
+                                   env=_exec_env)
+        print(" ".join(maf_out.args))
+        # add @SQ header to SAM (reference sequence)
+        samtools_out = subprocess.Popen(("samtools", "view", "-bt", params["reference"] + ".fai", "-"),
+                                        stdin=maf_out.stdout,
+                                        stdout=subprocess.PIPE, env=_exec_env)
+        print(" ".join(samtools_out.args))
 
-    export_to_bam(samtools_out.stdout, out_bam)
-    last_out.wait()
+        export_to_bam(samtools_out.stdout, out_bam)
 
-    if last_out.returncode != 0:
-        raise subprocess.SubprocessError("LAST exited with a non-zero status ({})".format(last_out.returncode))
+        if last_out.returncode != 0:
+            raise subprocess.SubprocessError("LAST exited with a non-zero status ({})".format(last_out.returncode))
     logging.info("LAST alignment file written to %s", out_bam)
 
 
