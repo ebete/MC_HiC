@@ -39,6 +39,7 @@ Session.vim
 *~
 tags
 [._]*.un~
+*.pdf
 .Rhistory
 .Rapp.history
 .RData
