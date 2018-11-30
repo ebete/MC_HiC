@@ -31,9 +31,9 @@ def load_configs(config_file):
         colnames = [str(x).strip().lower() for x in next(handle, [])]
         for row in handle:
             try:
-                if not row or len(row) < 4 or row[0][0] == "#":
+                if not row or len(row) != len(colnames) or row[0][0] == "#":
                     continue
-            except IndexError:
+            except IndexError:  # empty first column
                 continue
             # create key, value pairs of the csv headers and the parameter values
             cfg[row[0]] = {k: str(v).strip() for k, v in zip(colnames[1:], row[1:])}
@@ -116,9 +116,11 @@ def run_bowtie2(in_fasta, out_bam, params):
         "-L", params["seed_length"],  # length of seeds
         "-i", params["seed_interval_fun"],  # function used to calculate intervals between seeds
         "--ma", params["sw_match"],  # match bonus during alignment
+        "--mp", "{0:},{0:}".format(params["sw_mismatch"]),  # mismatch penalty during alignment
         "--score-min", params["min_score_fun"],  # function used to calculate miniumum alignment score
         "--rdg", "{},{}".format(params["query_gap_open"], params["query_gap_extend"]),  # read gap open/extension penalties
         "--rfg", "{},{}".format(params["ref_gap_open"], params["ref_gap_extend"]),  # reference gap open/extension penalties
+        "--ignore-quals",  # ignore Phred scores for mismatch scoring
         #"-a",  # report all valid alignments (very slow)
         "-t"  # write run times to stderr
     ), stdout=subprocess.PIPE, env=_exec_env)
