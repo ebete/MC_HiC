@@ -5,6 +5,7 @@ import glob
 import logging
 import os
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -13,6 +14,9 @@ import seaborn as sns
 from matplotlib.backends.backend_pdf import PdfPages
 
 plt.style.use("ggplot")
+matplotlib.rcParams['figure.figsize'] = (16, 8)
+matplotlib.rcParams['figure.dpi'] = 80
+# matplotlib.rcParams["figure.autolayout"] = True
 sns.set()
 
 
@@ -226,28 +230,32 @@ def plot_frequencies(frequencies, outfile):
     logging.info("Generating bar plot and writing to %s", outfile)
     with PdfPages(outfile) as pdf:
         # log scale
-        frequencies.plot(kind="bar")
+        frequencies.plot(kind="bar", linewidth=0, legend=False, logy=True)
         plt.title("Mapped fragments per read")
         plt.xlabel("Mapped fragments")
         plt.ylabel("Frequency ($\\log_{10}$)")
-        plt.semilogy()
-        pdf.savefig(bbox_inches="tight")
+        plt.tight_layout()
+        pdf.savefig()
         plt.close()
         # linear scale
-        frequencies.plot(kind="bar")
+        frequencies.plot(kind="bar", linewidth=0, legend=False)
         plt.title("Mapped fragments per read")
         plt.xlabel("Mapped fragments")
         plt.ylabel("Frequency")
-        pdf.savefig(bbox_inches="tight")
+        plt.tight_layout()
+        pdf.savefig()
         plt.close()
         # annotated heatmap
         df = (frequencies / frequencies.sum()).transpose()
-        sns.heatmap(df * 100, annot=True, fmt=".0f", vmin=0, vmax=100, square=True, cmap="inferno")
-        pdf.savefig(bbox_inches="tight")
+        sns.clustermap(df * 100, annot=True, fmt=".0f", vmin=0, vmax=100, cmap="inferno", col_cluster=False,
+                       figsize=matplotlib.rcParams['figure.figsize'])
+        pdf.savefig()
         plt.close()
         # cumulative heatmap
-        sns.heatmap(df.cumsum(axis=1) * 100, annot=True, fmt=".0f", vmin=0, vmax=100, square=True, cmap="inferno")
-        pdf.savefig(bbox_inches="tight")
+        sns.heatmap(df.cumsum(axis=1) * 100, annot=False, fmt=".0f", vmin=0, vmax=100, cmap="inferno")
+        plt.tight_layout()
+        pdf.savefig()
+        plt.close()
 
 
 if __name__ == "__main__":
