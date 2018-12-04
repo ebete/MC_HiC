@@ -3,6 +3,8 @@ raw_files
 ref_fake
 subsamples
 
+.idea/
+
 # Created by .ignore support plugin (hsz.mobi)
 .idea/**/workspace.xml
 .idea/**/tasks.xml
