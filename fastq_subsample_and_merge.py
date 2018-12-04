@@ -11,7 +11,9 @@ from Bio.SeqRecord import SeqRecord
 
 
 def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme="DpnII"):
-    restr_enzyme = getattr(Restriction, restriction_enzyme)
+    restr_enzyme = getattr(Restriction, restriction_enzyme, None)
+    if restr_enzyme is None:
+        logging.warning("Restriction enzyme %s not found; continuing without digesting.", restriction_enzyme)
 
     for fastq_in in fastq_files:
         fname = os.path.basename(fastq_in).split("_")[1]
@@ -23,7 +25,7 @@ def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme
             rec_idx = 0
             for record in handle:
                 fgmt_idx = 0
-                for digestion in restr_enzyme.catalyse(record.seq):
+                for digestion in (restr_enzyme.catalyse(record.seq) if restr_enzyme is not None else [record.seq]):
                     rec = SeqRecord(
                         digestion,
                         id="Fq.Id:{:s};Rd.Id:{:d};Fr.Id:{:d};Rd.Ln:{:d}".format(
@@ -38,7 +40,7 @@ def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme
                 rec_idx += 1
                 if rec_idx >= sample_size:
                     break
-        logging.info("Digestion with %s resulted in %d fragments", restriction_enzyme, total_fragments)
+        logging.info("Digestion with %s resulted in %d fragments", restr_enzyme, total_fragments)
 
 
 if __name__ == '__main__':
