@@ -6,6 +6,9 @@ suppressPackageStartupMessages({
   library(RColorBrewer)
 })
 
+# export to PDF
+pdf("create_heatmap.pdf", width = 11.69, height = 8.27, pointsize = 6)
+
 # functions
 relfreq <- function(x) { x / sum(x)}
 
@@ -25,3 +28,5 @@ tracecol = "gray",
 cellnote = mtx,
 notecol = "black"
 )
+
+dev.off()
