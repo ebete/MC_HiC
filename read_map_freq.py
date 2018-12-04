@@ -245,14 +245,21 @@ def plot_frequencies(frequencies, outfile):
         plt.tight_layout()
         pdf.savefig()
         plt.close()
-        # annotated heatmap
+        # clustered heatmap
         df = (frequencies / frequencies.sum()).transpose()
-        sns.clustermap(df * 100, annot=True, fmt=".0f", vmin=0, vmax=100, cmap="inferno", col_cluster=False,
+        sns.clustermap(df * 100, annot=False, fmt=".0f", vmin=0, vmax=100, cmap="inferno", col_cluster=False,
                        figsize=matplotlib.rcParams['figure.figsize'])
         pdf.savefig()
         plt.close()
+        # annotated heatmap
+        fig, ax = plt.subplots(figsize=(8, 16))
+        sns.heatmap(df * 100, annot=frequencies.transpose(), fmt=".0f", vmin=0, vmax=100, cmap="inferno", ax=ax)
+        plt.tight_layout()
+        pdf.savefig()
+        plt.close()
         # cumulative heatmap
-        sns.heatmap(df.cumsum(axis=1) * 100, annot=False, fmt=".0f", vmin=0, vmax=100, cmap="inferno")
+        fig, ax = plt.subplots(figsize=(8, 16))
+        sns.heatmap(df.cumsum(axis=1) * 100, annot=False, fmt=".0f", vmin=0, vmax=100, cmap="inferno", ax=ax)
         plt.tight_layout()
         pdf.savefig()
         plt.close()
@@ -266,7 +273,7 @@ if __name__ == "__main__":
     parser.add_argument("input_sam", help="Input SAM/BAM files.", metavar="INFILE", action="store", type=str,
                         nargs="+")
     parser.add_argument("--img-output", "-o", help="Output location of the PDF images", metavar="PDF", action="store",
-                        type=str)
+                        type=str, default="output.pdf")
     parser.add_argument("--distance-cutoff", "-d", help="Minimum distance between two fragments before considering "
                                                         "them as separate",
                         metavar="CUTOFF", action="store", type=int, default=1000)
@@ -289,6 +296,7 @@ if __name__ == "__main__":
     bins = bins.transpose()
     bins.columns = xlab
 
+    bins.to_csv(args.img_output + ".csv")
     plot_frequencies(bins, args.img_output)
 
     logging.shutdown()
