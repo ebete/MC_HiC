@@ -58,7 +58,7 @@ def run_aligners(config, output_dir, force_run):
         logging.info("Running configuration %s ...", cfg_name)
         fasta_input = cfg_params["input_fasta"][0]
 
-        bam_out = os.path.join(output_dir, "{}_{}.bam".format(cfg_name, cfg_params["aligner"]))
+        bam_out = os.path.join(output_dir, "{}.bam".format(cfg_name))
         if not force_run and os.path.exists(bam_out):
             logging.warning("File %s exists; %s will be skipped. Use --force-run to override this check.", bam_out,
                             cfg_name)
