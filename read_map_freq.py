@@ -184,8 +184,14 @@ def read_sam(fname, mapq_cutoff=0, sam_region="."):
             logging.debug("Skipping %s (MAPQ: %d)", read.qname, read.mapq)
             continue
 
+        # fragment id (Fr.Id) should be ignored
+        read_metadata = {}
+        for x in str(read.qname).split(";"):
+            read_metadata[x.split(":")[0]] = x.split(":")[1]
+        rdid = "{}_{}".format(read_metadata["Fq.Id"], read_metadata["Rd.Id"])
+
         logging.debug("Read %s found at %d:%d", read.qname, read.reference_start, read.reference_end)
-        mapped_reads.setdefault(read.qname, WeightedLinkedList()).insert_head(read.reference_start, read.reference_end)
+        mapped_reads.setdefault(rdid, WeightedLinkedList()).insert_head(read.reference_start, read.reference_end)
     samfile.close()
 
     return mapped_reads
