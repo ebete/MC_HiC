@@ -64,18 +64,22 @@ def run_aligners(config, output_dir, force_run):
                             cfg_name)
             continue
 
-        if "bwa" in cfg_params["aligner"]:
-            run_bwa(fasta_input, bam_out, cfg_params)
+        if "sw" in cfg_params["aligner"]:
+            run_bwasw(fasta_input, bam_out, cfg_params)
+        elif "bwa" in cfg_params["aligner"]:
+            run_bwamem(fasta_input, bam_out, cfg_params)
         elif "bowtie" in cfg_params["aligner"]:
             run_bowtie2(fasta_input, bam_out, cfg_params)
+        elif "minimap" in cfg_params["aligner"]:
+            run_minimap(fasta_input, bam_out, cfg_params)
         elif "last" in cfg_params["aligner"]:
             run_last(fasta_input, bam_out, cfg_params)
         else:
             logging.warning("Unknown aligner %s specified. Skipping %s ...", cfg_params["aligner"], cfg_name)
 
 
-def run_bwa(in_fasta, out_bam, params):
-    logging.info("Executing BWA ...")
+def run_bwamem(in_fasta, out_bam, params):
+    logging.info("Executing BWA-MEM ...")
     # @formatter:off
     align_out = subprocess.Popen(("bwa", "mem",
         "-x", "ont2d",  # Oxford Nanopore 2D reads
@@ -97,8 +101,65 @@ def run_bwa(in_fasta, out_bam, params):
     align_out.wait()
 
     if align_out.returncode != 0:
-        raise subprocess.SubprocessError("BWA exited with a non-zero status ({})".format(align_out.returncode))
-    logging.info("BWA alignment file written to %s", out_bam)
+        raise subprocess.SubprocessError("BWA-MEM exited with a non-zero status ({})".format(align_out.returncode))
+    logging.info("BWA-MEM alignment file written to %s", out_bam)
+
+
+def run_bwasw(in_fasta, out_bam, params):
+    logging.info("Executing BWA-SW ...")
+    # @formatter:off
+    align_out = subprocess.Popen(("bwa", "bwasw",
+        "-t", params["threads"],  # number of processing threads
+        "-a", params["sw_match"],  # match score
+        "-b", params["sw_mismatch"],  # mismatch score
+        "-q", params["query_gap_open"],  # gap open penalty
+        "-r", params["query_gap_extend"],  # gap extension penalty
+        "-z", params["z_best"],  # Z-best heuristic
+        "-T", params["score_threshold"],  # output alignment score threshold
+        params["reference"],  # reference genome
+        in_fasta  # FASTA with reads
+    ), stdout=subprocess.PIPE, env=_exec_env)
+    # @formatter:on
+    print(" ".join(align_out.args))
+
+    export_to_bam(align_out.stdout, out_bam)
+    align_out.wait()
+
+    if align_out.returncode != 0:
+        raise subprocess.SubprocessError("BWA-SW exited with a non-zero status ({})".format(align_out.returncode))
+    logging.info("BWA-SW alignment file written to %s", out_bam)
+
+
+def run_minimap(in_fasta, out_bam, params):
+    logging.info("Executing Minimap2 ...")
+    # @formatter:off
+    align_out = subprocess.Popen(("minimap2",
+        "-t", params["threads"],  # number of processing threads
+        "-x", "map-ont",  # ONT read mapping preset
+        "-Q",  # ignore quality scores
+        "--eqx",  # extended CIGAR format
+        "-a",  # output in SAM format
+        "--heap-sort=yes",  # optimisation for short reads
+        "--no-long-join",  # disable long gap patching heuristic
+        "--sr",  # short read alignment mode
+        "--frag=yes",  # enable fragment mode
+        "-A", params["sw_match"],  # match score
+        "-B", params["sw_mismatch"],  # mismatch score
+        "-O", params["query_gap_open"],  # gap open penalty
+        "-E", params["query_gap_extend"],  # gap extension penalty
+        "-s", params["score_threshold"],  # output alignment score threshold
+        params["reference"] + ".mmi",  # reference index
+        in_fasta  # FASTA with reads
+    ), stdout=subprocess.PIPE, env=_exec_env)
+    # @formatter:on
+    print(" ".join(align_out.args))
+
+    export_to_bam(align_out.stdout, out_bam)
+    align_out.wait()
+
+    if align_out.returncode != 0:
+        raise subprocess.SubprocessError("Minimap2 exited with a non-zero status ({})".format(align_out.returncode))
+    logging.info("Minimap2 alignment file written to %s", out_bam)
 
 
 def run_bowtie2(in_fasta, out_bam, params):
