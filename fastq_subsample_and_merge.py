@@ -28,8 +28,8 @@ def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme
                 for digestion in (restr_enzyme.catalyse(record.seq) if restr_enzyme is not None else [record.seq]):
                     rec = SeqRecord(
                         digestion,
-                        id="Fq.Id:{:s};Rd.Id:{:d};Fr.Id:{:d};Rd.Ln:{:d}".format(
-                            fname, rec_idx, fgmt_idx, len(digestion)),
+                        id="Fq.Id:{:s};Rd.Id:{:d};Rd.Ln:{:d};Fr.Id:{:d};Fr.Ln:{:d}".format(
+                            fname, rec_idx, len(record.seq), fgmt_idx, len(digestion)),
                         name="",
                         description=""
                     )
