@@ -3,6 +3,9 @@
 import argparse
 import gzip
 import logging
+import os
+import pickle
+import re
 from glob import iglob
 
 from Bio import SeqIO, Restriction
@@ -41,7 +44,7 @@ def site_frequency(fasta_file, enzyme, max_mismatch):
 
     logging.debug("Scanned %d locations", total_bp)
     for k, v in total_freq.items():
-        logging.debug("Sites with %d mismatches: %d", k, v)
+        logging.debug("Sites with %d mismatches: %d", k, len(v))
 
     return total_freq, total_bp
 
@@ -78,17 +81,17 @@ def get_close_matches(seq, site, mismatch_cutoff=0):
         # add site position if criterion satisfied
         if mismatches > mismatch_cutoff:
             continue
-        match_pos[mismatches] = match_pos.get(mismatches, 0) + 1
+        match_pos.setdefault(mismatches, []).append(i)
     return match_pos
 
 
 def get_exact_matches(seq, site, mismatch_cutoff=0):
-    return {0: seq.count(site)}
+    return {0: [m.start() for m in re.finditer("(?={:s})".format(site), str(seq), re.IGNORECASE)]}
 
 
 def left_merge(d1: dict, d2: dict):
     for k, v in d2.items():
-        d1[k] = d1.get(k, 0) + v
+        d1[k] = d1.get(k, []) + v
 
 
 if __name__ == "__main__":
@@ -96,8 +99,10 @@ if __name__ == "__main__":
 
     # Get command argument
     parser = argparse.ArgumentParser()
-    parser.add_argument("input_fasta", help="Input FASTA genomes (gzipped).", metavar="INFILE", action="store",
+    parser.add_argument("input_fasta", help="Input FASTA genomes (gzipped)", metavar="INFILE", action="store",
                         type=str, nargs="+")
+    parser.add_argument("-o", "--output-index", help="Create restriction site index files", action="store_true")
+    parser.add_argument("-f", "--overwrite", help="Overwrite existing index files", action="store_true")
     parser.add_argument("-e", "--enzyme", help="Restriction enzyme to calculate cutting frequency of", metavar="ENZYME",
                         action="store", type=str, default="DpnII")
     parser.add_argument("-m", "--max-mismatch", help="Maximum number of mismatches in the cutting site",
@@ -112,6 +117,19 @@ if __name__ == "__main__":
             total_len += fasta_length
             left_merge(total_freq, site_freq)
 
+            if not args.output_index:
+                continue
+
+            fname = "{:s}.{:s}".format(fasta, args.enzyme)
+            if os.path.exists(fname) and not args.overwrite:
+                logging.warning("File %s exists; Index will not be updated.", fname)
+                continue
+
+            logging.info("Creating %s index file %s ...", args.enzyme, fname)
+            with open(fname, "wb") as index_file:
+                pickle.dump(site_freq, index_file, protocol=pickle.HIGHEST_PROTOCOL)
+
     print("Total positions: {:d}".format(total_len))
     for k, v in total_freq.items():
-        print("{:s} sites with {:d} mismatches: {:d} ({:.2f}%)".format(args.enzyme, k, v, v / total_len * 100))
+        print("{:s} sites with {:d} mismatches: {:d} ({:.2f}%)".format(args.enzyme, k, len(v),
+                                                                       len(v) / total_len * 100))
