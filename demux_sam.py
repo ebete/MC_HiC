@@ -38,9 +38,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input_sam", help="Input SAM/BAM files.", metavar="INFILE", action="store", type=str,
                         nargs="+")
-    parser.add_argument("--output", "-o", help="Output directory of the de-multiplexed alignment files", metavar="DIR",
+    parser.add_argument("-o", "--output", help="Output directory of the de-multiplexed alignment files", metavar="DIR",
                         action="store", type=str, default="./")
-    parser.add_argument("--region", "-r", help="Limit read exporting to specific region", metavar="REGION",
+    parser.add_argument("-r", "--region", help="Limit read exporting to specific region", metavar="REGION",
                         action="store", type=str, default=".")
     args = parser.parse_args()
 
