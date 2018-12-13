@@ -278,14 +278,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input_sam", help="Input SAM/BAM files.", metavar="INFILE", action="store", type=str,
                         nargs="+")
-    parser.add_argument("--img-output", "-o", help="Output location of the PDF images", metavar="PDF", action="store",
+    parser.add_argument("-o", "--img-output", help="Output location of the PDF images", metavar="PDF", action="store",
                         type=str, default="output.pdf")
-    parser.add_argument("--distance-cutoff", "-d", help="Minimum distance between two fragments before considering "
+    parser.add_argument("-d", "--distance-cutoff", help="Minimum distance between two fragments before considering "
                                                         "them as separate",
                         metavar="CUTOFF", action="store", type=int, default=1000)
-    parser.add_argument("--minimum-mapq", "-q", help="Minimum MAPQ that a fragment needs to have", metavar="MQ",
+    parser.add_argument("-q", "--minimum-mapq", help="Minimum MAPQ that a fragment needs to have", metavar="MQ",
                         action="store", type=int, default=1)
-    parser.add_argument("--region", "-r", help="Limit read to specific region", metavar="REGION",
+    parser.add_argument("-r", "--region", help="Limit read to specific region", metavar="REGION",
                         action="store", type=str, default=".")
     args = parser.parse_args()
 

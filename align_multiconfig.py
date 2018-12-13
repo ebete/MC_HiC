@@ -295,9 +295,9 @@ if __name__ == '__main__':
     # Get command argument
     parser = argparse.ArgumentParser()
     parser.add_argument("input_config", help="Input configuration file", metavar="CONFIG", action="store", type=str)
-    parser.add_argument("--output", "-o", help="BAM output directory", metavar="DIR", action="store", type=str,
+    parser.add_argument("-o", "--output", help="BAM output directory", metavar="DIR", action="store", type=str,
                         default="./")
-    parser.add_argument("--force-run", "-f", help="Force-overwrite existing BAM result files", action="store_true")
+    parser.add_argument("-f", "--force-run", help="Force-overwrite existing BAM result files", action="store_true")
     args = parser.parse_args()
 
     cfg = load_configs(args.input_config)

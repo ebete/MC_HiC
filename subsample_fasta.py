@@ -56,7 +56,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("input_fasta", help="Input FASTA file", metavar="FASTA", action="store", type=str)
     parser.add_argument("output_dir", help="Output directory", metavar="DIR", action="store", type=str)
-    parser.add_argument("--subsamples", "-n", help="Number of subsamples to generate", metavar="n", action="store",
+    parser.add_argument("-n", "--subsamples", help="Number of subsamples to generate", metavar="SIZE", action="store",
                         type=int, default=5)
     args = parser.parse_args()
 

@@ -52,10 +52,10 @@ if __name__ == '__main__':
                         action="store", type=str)
     parser.add_argument("input_fq", help="Input FASTQ files (gzipped)", metavar="FASTQ", action="store", type=str,
                         nargs="+")
-    parser.add_argument("--sample", "-n", help="Number of reads to extract from each FASTQ file. Use a negative value "
-                                               "to extract all reads.", metavar="N", action="store", type=int,
+    parser.add_argument("-n", "--sample", help="Number of reads to extract from each FASTQ file. Use a negative value "
+                                               "to extract all reads.", metavar="SIZE", action="store", type=int,
                         default=1000)
-    parser.add_argument("--enzyme", help="Restriction enzyme to use for digestion. Leave empty for no digestion.",
+    parser.add_argument("-e", "--enzyme", help="Restriction enzyme to use for digestion. Leave empty for no digestion.",
                         metavar="ENZYME", action="store", type=str, default="N/a")
     args = parser.parse_args()
 
