@@ -69,13 +69,14 @@ if __name__ == '__main__':
     parser.add_argument("-r", "--region", help="Limit search to specific region", metavar="REGION", action="store",
                         type=str, default=".")
     parser.add_argument("-b", "--bin-size", help="Size of the bins", metavar="SIZE", action="store",
-                        type=int, default=5000)
+                        type=int, default=500)
     args = parser.parse_args()
 
     enzyme_sites = load_site_index(args.input_index)
     sites_per_read = get_sites_per_read(enzyme_sites, args.input_sam, 20, args.region)
     del enzyme_sites
 
+    # create symmetric interaction matrix
     site_interactions = []
     for k, v in sites_per_read.items():
         for i in range(len(v)):
@@ -86,6 +87,15 @@ if __name__ == '__main__':
     del sites_per_read
     scatter_points = np.array(site_interactions)
     del site_interactions
+    np.savetxt("{}_interactions.csv".format(args.input_sam), scatter_points, header="x;y", comments="", fmt="%d",
+               delimiter=";", encoding="utf-8")
 
-    plt.scatter(scatter_points[:, 1], scatter_points[:, 1])
-    plt.show()
+    # plot the matrix
+    # fig, ax = plt.subplots(nrows=1, ncols=1)
+    # ax.set_facecolor("k")
+    # plt.scatter(scatter_points[:, 0], scatter_points[:, 1])
+    # plt.hist2d(scatter_points[:, 0], scatter_points[:, 1], bins=args.bin_size, cmap=plt.get_cmap("inferno"), vmax=15)
+    # plt.colorbar()
+    # sns.jointplot(scatter_points[:, 0], scatter_points[:, 1], kind="kde", shade=True)
+    #
+    # plt.show()
