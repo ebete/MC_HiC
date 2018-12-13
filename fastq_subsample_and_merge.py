@@ -18,7 +18,7 @@ def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme
     for fastq_in in fastq_files:
         fname = os.path.basename(fastq_in).split("_")[1]
 
-        logging.info("Sampling %d reads from %s ...", sample_size, fastq_in)
+        logging.info("Sampling %s reads from %s ...", sample_size if sample_size > 0 else "all", fastq_in)
         total_fragments = 0
         with gzip.open(fastq_in, "rt") as fin:
             handle = SeqIO.parse(fin, "fastq")
@@ -38,7 +38,7 @@ def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme
                     fgmt_idx += 1
                     total_fragments += 1
                 rec_idx += 1
-                if rec_idx >= sample_size:
+                if 0 < sample_size <= rec_idx:
                     break
         logging.info("Digestion with %s resulted in %d fragments", restr_enzyme, total_fragments)
 
@@ -52,10 +52,11 @@ if __name__ == '__main__':
                         action="store", type=str)
     parser.add_argument("input_fq", help="Input FASTQ files (gzipped)", metavar="FASTQ", action="store", type=str,
                         nargs="+")
-    parser.add_argument("--sample", "-n", help="Number of reads to extract from each FASTQ file", metavar="N",
-                        action="store", type=int, default=1000)
-    parser.add_argument("--enzyme", help="Restriction enzyme to use for digestion", metavar="ENZYME",
-                        action="store", type=str, default="DpnII")
+    parser.add_argument("--sample", "-n", help="Number of reads to extract from each FASTQ file. Use a negative value "
+                                               "to extract all reads.", metavar="N", action="store", type=int,
+                        default=1000)
+    parser.add_argument("--enzyme", help="Restriction enzyme to use for digestion. Leave empty for no digestion.",
+                        metavar="ENZYME", action="store", type=str, default="N/a")
     args = parser.parse_args()
 
     input_files = []
