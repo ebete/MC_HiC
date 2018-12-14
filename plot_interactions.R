@@ -9,13 +9,13 @@ suppressPackageStartupMessages({
   library(cowplot)
 })
 
-interactions <- read.csv("~/mc_hic/mc_4c/bwa_gapped_14seed.bam_interactions.csv", sep = ";")
+interactions <- read.csv("/data0/thom/temp/bwa_run.bam_interactions.csv", sep = ";")
 
 # interaction map
 g <- ggplot(interactions, aes(x = x, y = y)) +
   theme_minimal() +
-  scale_y_reverse(labels = scales::scientific) +
-  scale_x_continuous(position = "top", labels = scales::scientific) +
+  scale_y_reverse(labels = function(x) { sprintf("%.0f Mb", x / 1e6)}) +
+  scale_x_continuous(position = "top", labels = function(x) { sprintf("%.0f Mb", x / 1e6)}) +
   xlab("chr7") +
   ylab("chr7") +
   theme(plot.title = element_text(hjust = 0.5), legend.position = "bottom", axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
@@ -27,6 +27,7 @@ plt1 <- g +
 genemap <- autoplot(TxDb.Mmusculus.UCSC.mm9.knownGene, which = range(GRanges(Rle(c("chr7"), c(1)), IRanges(105000000, width = 10000000))), gap.geom = "chevron", label = F)
 plt2 <- genemap@ggplot +
   ggtitle("chr7 MC-4C interaction map (105 Mb - 115 Mb)") +
+  scale_x_continuous(labels = function(x) { sprintf("%.0f Mb", x / 1e6)}) +
   theme(plot.title = element_text(hjust = 0.5), axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
 
 # plot both
