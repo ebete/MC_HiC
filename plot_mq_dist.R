@@ -18,7 +18,7 @@ mq.melt <- melt(mq)
 ggplot(mq.melt, aes(x = value, fill = Var2)) +
   geom_histogram(position = "dodge", na.rm = T, binwidth = 10) +
   theme_bw() +
-#  scale_x_continuous(limits = c(0, 100), breaks = 1 : 10 * 10) +
+  scale_x_continuous(limits = c(0, 70), breaks = 1 : 10 * 10) +
   scale_y_continuous(labels = comma) +
   xlab("MAPQ") +
   ylab("# reads") +
