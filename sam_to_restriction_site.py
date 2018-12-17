@@ -7,7 +7,7 @@ import pickle
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import pysam
+import pandas as pd
 import seaborn as sns
 
 plt.style.use("ggplot")
@@ -23,6 +23,27 @@ def load_site_index(fname):
         return pickle.load(f)
 
 
+def get_sites_per_read(input_index, mapping_df, distance_cutoff=20):
+    sites_per_read = {}
+    start_site = 1
+    for index, row in mapping_df.iterrows():
+        cut_sites = input_index[row["chromosome"]][0]
+        # check alignment start
+        start_site, start_dist = get_closest_site(start_site, cut_sites, int(row["start"]))
+        if start_dist > distance_cutoff:
+            start_site += 1
+        # check alignment end
+        end_site = start_site
+        end_site, end_dist = get_closest_site(end_site, cut_sites, int(row["end"]))
+        if end_dist > distance_cutoff:
+            end_site -= 1
+        # assign found sites to read
+        site_indices = [cut_sites[i] for i in range(start_site, end_site + 1)]
+        if len(site_indices) > 0:
+            sites_per_read.setdefault(row["read"], []).append(site_indices)
+    return sites_per_read
+
+
 def get_closest_site(site_index, cut_sites, locus):
     # fast-forward to site closest to locus
     dist_to_locus = cut_sites[site_index] - locus
@@ -36,45 +57,27 @@ def get_closest_site(site_index, cut_sites, locus):
     return site_index, dist_to_locus
 
 
-def get_sites_per_read(input_index, input_sam, distance_cutoff=20, sam_region="."):
-    logging.info("Finding closest sites for mapped reads in %s ...", input_sam)
-    cut_sites = input_index[sam_region.split(":")[0]][0]  # TODO: less hack-y selection of chromosome
-    sites_per_read = {}
-    with pysam.AlignmentFile(input_sam, "r") as samfile:
-        start_site = 1
-        for read in samfile.fetch(region=sam_region):
-            # check alignment start
-            start_site, start_dist = get_closest_site(start_site, cut_sites, read.reference_start)
-            if start_dist > distance_cutoff:
-                start_site += 1
-            # check alignment end
-            end_site = start_site
-            end_site, end_dist = get_closest_site(end_site, cut_sites, read.reference_end)
-            if end_dist > distance_cutoff:
-                end_site -= 1
-            # assign found sites to read
-            site_indices = [cut_sites[i] for i in range(start_site, end_site + 1)]
-            if len(site_indices) > 0:
-                sites_per_read.setdefault(read.qname, []).append(site_indices)
-    return sites_per_read
-
-
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG, format="[%(asctime)s]: %(message)s")
 
     # Get command argument
     parser = argparse.ArgumentParser()
     parser.add_argument("input_index", help="Restriction site index file", metavar="INDEX", action="store", type=str)
-    parser.add_argument("input_sam", help="Sorted SAM/BAM file to process", metavar="SAM", action="store", type=str)
-    parser.add_argument("-r", "--region", help="Limit search to specific region", metavar="REGION", action="store",
-                        type=str, default=".")
+    parser.add_argument("input_csv", help="Fragment mapping file", metavar="CSV", action="store", type=str)
     parser.add_argument("-b", "--bin-size", help="Size of the bins", metavar="SIZE", action="store",
                         type=int, default=500)
     args = parser.parse_args()
 
     enzyme_sites = load_site_index(args.input_index)
-    sites_per_read = get_sites_per_read(enzyme_sites, args.input_sam, 20, args.region)
+    # load and sort mapped fragments
+    mapping_table = pd.read_csv(args.input_csv, sep=";", index_col=False)
+    mapping_table.sort_values("start", axis=0, inplace=True, ascending=True)
+
+    logging.info("Finding closest sites for mapped reads in %s ...", args.input_csv)
+    sites_per_read = get_sites_per_read(enzyme_sites, mapping_table, 20)
+
     del enzyme_sites
+    del mapping_table
 
     # create symmetric interaction matrix
     site_interactions = []
@@ -87,7 +90,7 @@ if __name__ == '__main__':
     del sites_per_read
     scatter_points = np.array(site_interactions)
     del site_interactions
-    np.savetxt("{}_interactions.csv".format(args.input_sam), scatter_points, header="x;y", comments="", fmt="%d",
+    np.savetxt("{}_interactions.csv".format(args.input_csv), scatter_points, header="x;y", comments="", fmt="%d",
                delimiter=";", encoding="utf-8")
 
     # plot the matrix
