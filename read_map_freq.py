@@ -76,9 +76,13 @@ class WeightedLinkedList(object):
         """
         Prints all vertices contained in the WeightedLinkedList in order.
         """
+        for x in self:
+            print(x)
+
+    def __iter__(self):
         cur = self.head
         while cur:
-            print(cur)
+            yield cur
             cur = cur.vertex_endpoint
 
     def __len__(self):
@@ -301,11 +305,11 @@ def export_mapped_regions(reads, outfile):
         logging.info("Writing mapped regions to %s ...", outfile)
         handle.write("read;chromosome;start;end\n")
         for key, value in reads.items():
-            fragment = value.head
-            while fragment:
-                handle.write("{};{};{};{}\n".format(key, fragment.ref_name, fragment.fragment_start,
-                                                    fragment.fragment_end))
-                fragment = fragment.vertex_endpoint
+            fragment_string = ""
+            for fragment in value:
+                fragment_string = "{};{};{};{}\n".format(key, fragment.ref_name, fragment.fragment_start,
+                                                         fragment.fragment_end) + fragment_string
+            handle.write(fragment_string)
 
 
 if __name__ == "__main__":
