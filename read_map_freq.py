@@ -30,7 +30,7 @@ class WeightedLinkedList(object):
         self.head = None
         self.num_nodes = 0
 
-    def insert_head(self, fragment_start, fragment_end):
+    def insert_head(self, fragment_start, fragment_end, ref_name):
         """
         Insert a new vertex at the head of the linked list.
 
@@ -40,10 +40,13 @@ class WeightedLinkedList(object):
         :type fragment_end: int
         :param fragment_end: End position of the fragment.
 
+        :type ref_name: str
+        :param ref_name: Reference sequence the fragment lies on.
+
         :rtype WeightedLinkedList
         :return: Itself.
         """
-        value = WeightedLinkedListNode(fragment_start, fragment_end)
+        value = WeightedLinkedListNode(fragment_start, fragment_end, ref_name)
         value.set_endpoint(self.head)
         self.head = value
         self.num_nodes += 1
@@ -91,7 +94,7 @@ class WeightedLinkedListNode(object):
     """
     node_id = 0
 
-    def __init__(self, fragment_start, fragment_end):
+    def __init__(self, fragment_start, fragment_end, ref_name):
         """
         Initialises a new WeightedLinkedListNode.
 
@@ -100,9 +103,13 @@ class WeightedLinkedListNode(object):
 
         :type fragment_end: int
         :param fragment_end: End position of the fragment.
+
+        :type ref_name: str
+        :param ref_name: Reference sequence the fragment lies on.
         """
         self.fragment_start = fragment_start
         self.fragment_end = fragment_end
+        self.ref_name = ref_name
         self.vertex_endpoint = None
 
         self.node_id = str(WeightedLinkedListNode.node_id)
@@ -129,7 +136,10 @@ class WeightedLinkedListNode(object):
         :rtype int
         :return: The distance between the nodes.
         """
-        return (self.fragment_start - self.vertex_endpoint.fragment_end) if (self.vertex_endpoint is not None) else None
+        if self.vertex_endpoint is None or self.ref_name != self.vertex_endpoint.ref_name:
+            return None
+        else:
+            return self.fragment_start - self.vertex_endpoint.fragment_end
 
     def collapse(self):
         """
@@ -139,7 +149,9 @@ class WeightedLinkedListNode(object):
         :rtype WeightedLinkedListNode
         :return: Itself.
         """
-        if self.vertex_endpoint is None:
+        if self.vertex_endpoint is None:  # last in linked list
+            return self
+        if self.ref_name != self.vertex_endpoint.ref_name:  # next is on different chromosome
             return self
         logging.debug("Collapsing nodes {} and {}".format(self.node_id, self.vertex_endpoint.node_id))
 
@@ -155,8 +167,8 @@ class WeightedLinkedListNode(object):
         return self
 
     def __str__(self):
-        return "WeightedLinkedListNode{{id: {}; weight: {}; value: ({}:{})}}" \
-            .format(self.node_id, self.get_weight(), self.fragment_start, self.fragment_end)
+        return "WeightedLinkedListNode{{id: {}; weight: {}; value: ({}:{}-{})}}" \
+            .format(self.node_id, self.get_weight(), self.ref_name, self.fragment_start, self.fragment_end)
 
 
 def read_sam(fname, mapq_cutoff=0, sam_region="."):
@@ -190,8 +202,10 @@ def read_sam(fname, mapq_cutoff=0, sam_region="."):
             read_metadata[x.split(":")[0]] = x.split(":")[1]
         rdid = "{}_{}".format(read_metadata["Fq.Id"], read_metadata["Rd.Id"])
 
-        logging.debug("Read %s found at %d:%d", read.qname, read.reference_start, read.reference_end)
-        mapped_reads.setdefault(rdid, WeightedLinkedList()).insert_head(read.reference_start, read.reference_end)
+        logging.debug("Read %s found at %s:%d-%d", read.qname, read.reference_name, read.reference_start,
+                      read.reference_end)
+        mapped_reads.setdefault(rdid, WeightedLinkedList()).insert_head(read.reference_start, read.reference_end,
+                                                                        read.reference_name)
     samfile.close()
 
     return mapped_reads
@@ -271,6 +285,29 @@ def plot_frequencies(frequencies, outfile):
         plt.close()
 
 
+def export_mapped_regions(reads, outfile):
+    """
+    Write the mapped regions to a CSV file.
+
+    :type reads: dict
+    :param reads: Dictionary containing a WeightedLinkedList associated with the
+                  read.
+
+    :type outfile: str
+    :param outfile: Where to write the CSV file to.
+    :return:
+    """
+    with open(outfile, "wt") as handle:
+        logging.info("Writing mapped regions to %s ...", outfile)
+        handle.write("read;chromosome;start;end\n")
+        for key, value in reads.items():
+            fragment = value.head
+            while fragment:
+                handle.write("{};{};{};{}\n".format(key, fragment.ref_name, fragment.fragment_start,
+                                                    fragment.fragment_end))
+                fragment = fragment.vertex_endpoint
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)s: %(message)s")
 
@@ -279,7 +316,9 @@ if __name__ == "__main__":
     parser.add_argument("input_sam", help="Input SAM/BAM files.", metavar="INFILE", action="store", type=str,
                         nargs="+")
     parser.add_argument("-o", "--img-output", help="Output location of the PDF images", metavar="PDF", action="store",
-                        type=str, default="output.pdf")
+                        type=str)
+    parser.add_argument("-c", "--csv-output", help="Output location of the CSV mapped regions file", metavar="DIR",
+                        action="store", type=str)
     parser.add_argument("-d", "--distance-cutoff", help="Minimum distance between two fragments before considering "
                                                         "them as separate",
                         metavar="CUTOFF", action="store", type=int, default=1000)
@@ -297,12 +336,15 @@ if __name__ == "__main__":
             df = merge_and_count_freq(mapped_reads, args.distance_cutoff)
             bins = pd.concat([bins, df], axis=0, ignore_index=True)
             xlab.append(os.path.basename(samfile))
+            if args.csv_output is not None:
+                export_mapped_regions(mapped_reads, os.path.join(args.csv_output, os.path.basename(samfile)) + ".csv")
 
     bins.fillna(0, inplace=True)
     bins = bins.transpose()
     bins.columns = xlab
 
-    bins.to_csv(args.img_output + ".csv")
-    plot_frequencies(bins, args.img_output)
+    if args.img_output is not None:
+        bins.to_csv(args.img_output + ".csv")
+        plot_frequencies(bins, args.img_output)
 
     logging.shutdown()
