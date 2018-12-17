@@ -196,8 +196,14 @@ def read_sam(fname, mapq_cutoff=0, sam_region="."):
     samfile = pysam.AlignmentFile(fname, "r")
     logging.info("Reading alignment file %s ...", fname)
     for read in samfile.fetch(region=sam_region):
+        if read.flag & 0x4 != 0:
+            logging.debug("Skipping %s (unaligned)", read.qname)
+            continue
         if read.mapq < mapq_cutoff:
             logging.debug("Skipping %s (MAPQ: %d)", read.qname, read.mapq)
+            continue
+        if read.flag & 0x100 != 0:
+            logging.debug("Skipping %s (secondary alignment)", read.qname)
             continue
 
         # fragment id (Fr.Id) should be ignored
