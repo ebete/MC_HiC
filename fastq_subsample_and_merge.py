@@ -10,7 +10,7 @@ from Bio import SeqIO, Restriction
 from Bio.SeqRecord import SeqRecord
 
 
-def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme="DpnII"):
+def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme="DpnII", min_length=-1, max_length=-1):
     restr_enzyme = getattr(Restriction, restriction_enzyme, None)
     if restr_enzyme is None:
         logging.warning("Restriction enzyme %s not found; continuing without digesting.", restriction_enzyme)
@@ -33,6 +33,12 @@ def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme
                         name="",
                         description=""
                     )
+                    if min_length >= 0 and len(digestion) < min_length:
+                        logging.debug("Skipping %s; too short.", rec.id)
+                        continue
+                    if 0 <= max_length < len(digestion):
+                        logging.debug("Skipping %s; too long.", rec.id)
+                        continue
 
                     SeqIO.write(rec, fasta_out, "fasta")
                     fgmt_idx += 1
@@ -44,7 +50,7 @@ def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)s: %(message)s")
+    logging.basicConfig(level=logging.INFO, format="[%(asctime)s]: %(message)s")
 
     # Get command argument
     parser = argparse.ArgumentParser()
@@ -57,6 +63,10 @@ if __name__ == '__main__':
                         default=1000)
     parser.add_argument("-e", "--enzyme", help="Restriction enzyme to use for digestion. Leave empty for no digestion.",
                         metavar="ENZYME", action="store", type=str, default="N/a")
+    parser.add_argument("-s", "--min", help="Minimum length of a read fragment.", metavar="LENGTH", action="store",
+                        type=int, default=-1)
+    parser.add_argument("-l", "--max", help="Maximum length of a read fragment.", metavar="LENGTH", action="store",
+                        type=int, default=-1)
     args = parser.parse_args()
 
     input_files = []
@@ -65,4 +75,4 @@ if __name__ == '__main__':
             input_files.append(fastq)
 
     with gzip.open(args.output_fa, "wt") as fout:
-        subsample_fastq(input_files, fout, args.sample, args.enzyme)
+        subsample_fastq(input_files, fout, args.sample, args.enzyme, args.min, args.max)
