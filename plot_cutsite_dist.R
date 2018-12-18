@@ -34,8 +34,9 @@ int_plot <- ggplot(sites_dist, aes(x = distance, y = chromosome)) +
   )
 
 # plot DpnII density on chromosome
+hbb_region <- data.frame(xmin = 105e6, xmax = 115e6, ymin = "chr6", ymax = "chr8")
 dens_plot <- ggplot(sites, aes(x = position, y = chromosome)) +
-  geom_bin2d(bins = 1000) +
+  geom_bin2d(binwidth = 1e5) + # 100kb bins
   scale_x_continuous(position = "top", labels = function(x) { sprintf("%.0f Mb", x / 1e6)}) +
 #  scale_y_discrete(limits = "chr7") +
   scale_y_discrete(limits = rev(levels(sites$chromosome))) +
@@ -48,6 +49,12 @@ dens_plot <- ggplot(sites, aes(x = position, y = chromosome)) +
   plot.title = element_text(hjust = 0.5),
   legend.position = "right",
   axis.text.y = element_text(color = axis_face_style)
+  ) +
+  geom_rect(data = hbb_region,
+  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+  color = "red",
+  alpha = 0,
+  inherit.aes = FALSE
   )
 
 grid.arrange(int_plot, dens_plot, ncol = 1)
