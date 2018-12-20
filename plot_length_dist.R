@@ -28,7 +28,7 @@ ggplot(df, aes(x = length, fill = source)) +
   axis.title.y = element_blank(),
   panel.grid.major = element_blank(),
   panel.grid.minor = element_blank(),
-  plot.title = element_text(hjust = 0.5),
+  plot.title = element_text(hjust = 0.5, face = "bold"),
   legend.position = "bottom"
   ) +
   xlab("Read length") +
