@@ -3,6 +3,7 @@
 # load packages
 suppressPackageStartupMessages({
   library(ggplot2)
+  library(reshape2)
   library(gridExtra)
   library(scales)
 })
@@ -15,6 +16,14 @@ sites_dist$chromosome <- factor(sites_dist$chromosome, levels(sites_dist$chromos
 # y-axis highlighting
 axis_face_style <- rep("black", 22)
 axis_face_style[16] <- "red"  # chr7
+# calculate ECDF of DpnII cut site intervals
+sites_ecdf <- data.frame(interval = seq(1, 500, by = 1))
+for (chr in levels(sites_dist$chromosome)) {
+  f <- ecdf(sites_dist[sites_dist$chromosome == chr,]$distance)
+  df <- data.frame(f(sites_ecdf$interval))
+  colnames(df) <- c(chr)
+  sites_ecdf <- cbind(sites_ecdf, df)
+}
 
 # plot DpnII intervals
 int_plot <- ggplot(sites_dist, aes(x = distance, y = chromosome)) +
@@ -57,4 +66,24 @@ dens_plot <- ggplot(sites, aes(x = position, y = chromosome)) +
   inherit.aes = FALSE
   )
 
+# combine plots
 grid.arrange(int_plot, dens_plot, ncol = 1)
+
+# plot ECDF of DpnII interval
+sites_ecdf.melted <- melt(sites_ecdf, id.vars = c("interval"))
+colnames(sites_ecdf.melted) <- c("interval", "chromosome", "ecdf")
+ecdf_plot <- ggplot(sites_ecdf.melted, aes(x = interval, y = ecdf, colour = chromosome)) +
+  geom_line() +
+  geom_vline(xintercept = 256, linetype = "dotted", color = "red") + # theoretical average DpnII interval
+  scale_x_continuous() +
+  scale_y_continuous(labels = function(x) { sprintf("%.0f%%", x * 100)}, limits = c(0, 1)) +
+  ggtitle("ECDF of DpnII site intervals in mm9") +
+  xlab("Interval (bases)") +
+  ylab("Fraction of intervals shorter") +
+  theme_minimal() +
+  theme(
+  plot.title = element_text(hjust = 0.5, face = "bold"),
+  legend.position = "right"
+  ) +
+  annotate("text", x = 256, y = 0.4, label = "Theoretical average interval", colour = "red", vjust = - 1, hjust = 0, angle = 270)
+ecdf_plot
