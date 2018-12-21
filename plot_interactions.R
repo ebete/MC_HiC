@@ -9,13 +9,14 @@ suppressPackageStartupMessages({
   library(cowplot)
 })
 
-interactions <- read.csv("/data0/thom/temp/bwa_run.bam.csv_interactions.csv", sep = ";")
+interactions <- read.csv("/data0/thom/temp/bwa_fixed.bam.csv_interactions.csv", sep = ";")
+chr7 <- interactions[(interactions$chr.1 == "chr7") & (interactions$chr.2 == "chr7"),]
 
 # interaction map
-g <- ggplot(interactions, aes(x = x, y = y)) +
+g <- ggplot(chr7, aes(x = pos.1, y = pos.2)) +
   theme_minimal() +
-  scale_y_reverse(labels = function(x) { sprintf("%.0f Mb", x / 1e6)}) +
-  scale_x_continuous(position = "top", labels = function(x) { sprintf("%.0f Mb", x / 1e6)}) +
+  scale_y_reverse(labels = function(x) { sprintf("%.0f Mb", x / 1e6)}, limits = c(115e6, 105e6)) +
+  scale_x_continuous(position = "top", labels = function(x) { sprintf("%.0f Mb", x / 1e6)}, limits = c(105e6, 115e6)) +
   xlab("chr7") +
   ylab("chr7") +
   theme(plot.title = element_text(hjust = 0.5, face = "bold"), legend.position = "bottom", axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
@@ -24,7 +25,7 @@ plt1 <- g +
   scale_fill_continuous(type = "viridis", limits = c(0, 30))
 
 # reference genome annotation
-genemap <- autoplot(TxDb.Mmusculus.UCSC.mm9.knownGene, which = range(GRanges(Rle(c("chr7"), c(1)), IRanges(105000000, width = 10000000))), gap.geom = "chevron", label = F)
+genemap <- autoplot(TxDb.Mmusculus.UCSC.mm9.knownGene, which = range(GRanges(Rle(c("chr7"), c(1)), IRanges(105e6, width = 10e6))), gap.geom = "chevron", label = F)
 plt2 <- genemap@ggplot +
   ggtitle("chr7 MC-4C interaction map (105 Mb - 115 Mb)") +
   scale_x_continuous(labels = function(x) { sprintf("%.0f Mb", x / 1e6)}) +
