@@ -10,13 +10,23 @@ from Bio import SeqIO, Restriction
 from Bio.SeqRecord import SeqRecord
 
 
-def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme="DpnII", min_length=-1, max_length=-1):
+def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme="DpnII", fragment_length=-1,
+                    fragment_interval=-1, min_length=-1, max_length=-1):
     restr_enzyme = getattr(Restriction, restriction_enzyme, None)
-    if restr_enzyme is None:
-        logging.warning("Restriction enzyme %s not found; continuing without digesting.", restriction_enzyme)
+
+    if fragment_interval <= 0:
+        fragment_interval = fragment_length
+    if fragment_length > 0:
+        logging.info("Reads will be split into %d long fragments with a %d base interval.",
+                     fragment_length, fragment_interval)
+        max_length = -1
+    elif restr_enzyme is None:
+        logging.warning("Restriction enzyme %s is not valid; continuing without fragmentation.", restriction_enzyme)
+    else:
+        logging.info("Using restriction enzyme %s for digestion.", restriction_enzyme)
 
     for fastq_in in fastq_files:
-        fname = os.path.basename(fastq_in).split("_")[1]
+        fname = os.path.basename(fastq_in).split("_")[1]  # TODO: This only works for some file names
 
         logging.info("Sampling %s reads from %s ...", sample_size if sample_size > 0 else "all", fastq_in)
         total_fragments = 0
@@ -25,7 +35,19 @@ def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme
             rec_idx = 0
             for record in handle:
                 fgmt_idx = 0
-                for digestion in (restr_enzyme.catalyse(record.seq) if restr_enzyme is not None else [record.seq]):
+                fragments = []
+                if fragment_length > 0:
+                    # fixed-length fragmentation mode
+                    fragments = [record.seq[i:i + fragment_length] for i in
+                                 range(0, len(record.seq), fragment_interval)]
+                elif restr_enzyme is not None:
+                    # enzyme-based fragmentation mode
+                    fragments = restr_enzyme.catalyse(record.seq)
+                else:
+                    # no fragmentation
+                    fragments = [record.seq]
+
+                for digestion in fragments:
                     rec = SeqRecord(
                         digestion,
                         id="Fq.Id:{:s};Rd.Id:{:d};Rd.Ln:{:d};Fr.Id:{:d};Fr.Ln:{:d}".format(
@@ -33,10 +55,10 @@ def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme
                         name="",
                         description=""
                     )
-                    if min_length >= 0 and len(digestion) < min_length:
+                    if min_length > 0 and len(digestion) < min_length:
                         logging.debug("Skipping %s; too short.", rec.id)
                         continue
-                    if 0 <= max_length < len(digestion):
+                    if 0 < max_length < len(digestion):
                         logging.debug("Skipping %s; too long.", rec.id)
                         continue
 
@@ -46,7 +68,7 @@ def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme
                 rec_idx += 1
                 if 0 < sample_size <= rec_idx:
                     break
-        logging.info("Digestion with %s resulted in %d fragments", restr_enzyme, total_fragments)
+        logging.info("Fragmentation resulted in %d fragments", total_fragments)
 
 
 if __name__ == '__main__':
@@ -58,11 +80,17 @@ if __name__ == '__main__':
                         action="store", type=str)
     parser.add_argument("input_fq", help="Input FASTQ files (gzipped)", metavar="FASTQ", action="store", type=str,
                         nargs="+")
-    parser.add_argument("-n", "--sample", help="Number of reads to extract from each FASTQ file. Use a negative value "
-                                               "to extract all reads.", metavar="SIZE", action="store", type=int,
-                        default=1000)
+    parser.add_argument("-n", "--sample", help="Limit the number of reads to extract from each FASTQ file.",
+                        metavar="SIZE", action="store", type=int, default=-1)
     parser.add_argument("-e", "--enzyme", help="Restriction enzyme to use for digestion. Leave empty for no digestion.",
                         metavar="ENZYME", action="store", type=str, default="N/a")
+    parser.add_argument("-f", "--fragment-length", help="Length of the fragments. This will override --enzyme and "
+                                                        "--max-length.",
+                        metavar="LENGTH", action="store", type=int, default=-1)
+    parser.add_argument("-i", "--fragment-interval", help="Interval between the fragments. This value is only used "
+                                                          "when --fragment-length is also specified. Defaults to"
+                                                          "--fragment-length",
+                        metavar="LENGTH", action="store", type=int, default=-1)
     parser.add_argument("-s", "--min", help="Minimum length of a read fragment.", metavar="LENGTH", action="store",
                         type=int, default=-1)
     parser.add_argument("-l", "--max", help="Maximum length of a read fragment.", metavar="LENGTH", action="store",
@@ -75,4 +103,5 @@ if __name__ == '__main__':
             input_files.append(fastq)
 
     with gzip.open(args.output_fa, "wt") as fout:
-        subsample_fastq(input_files, fout, args.sample, args.enzyme, args.min, args.max)
+        subsample_fastq(input_files, fout, args.sample, args.enzyme, args.fragment_length, args.fragment_interval,
+                        args.min, args.max)
