@@ -88,7 +88,7 @@ if __name__ == '__main__':
                                                         "--max-length.",
                         metavar="LENGTH", action="store", type=int, default=-1)
     parser.add_argument("-i", "--fragment-interval", help="Interval between the fragments. This value is only used "
-                                                          "when --fragment-length is also specified. Defaults to"
+                                                          "when --fragment-length is also specified. Defaults to "
                                                           "--fragment-length",
                         metavar="LENGTH", action="store", type=int, default=-1)
     parser.add_argument("-s", "--min", help="Minimum length of a read fragment.", metavar="LENGTH", action="store",

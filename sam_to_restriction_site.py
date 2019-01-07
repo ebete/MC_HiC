@@ -73,8 +73,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("input_index", help="Restriction site index file", metavar="INDEX", action="store", type=str)
     parser.add_argument("input_csv", help="Fragment mapping file", metavar="CSV", action="store", type=str)
-    parser.add_argument("-b", "--bin-size", help="Size of the bins", metavar="SIZE", action="store",
-                        type=int, default=500)
+    # parser.add_argument("-b", "--bin-size", help="Size of the bins", metavar="SIZE", action="store",
+    #                     type=int, default=500)
     parser.add_argument("-d", "--distance-cutoff", help="Maximum distance between a fragment and a restriction site",
                         metavar="DISTANCE", action="store", type=int, default=20)
     args = parser.parse_args()
