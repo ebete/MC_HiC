@@ -71,11 +71,13 @@ if __name__ == '__main__':
 
     # Get command argument
     parser = argparse.ArgumentParser()
-    parser.add_argument("input_index", help="Restriction site index file", metavar="INDEX", action="store", type=str)
-    parser.add_argument("input_csv", help="Fragment mapping file", metavar="CSV", action="store", type=str)
-    # parser.add_argument("-b", "--bin-size", help="Size of the bins", metavar="SIZE", action="store",
+    parser.add_argument("input_index", help="Restriction site index file.", metavar="INDEX", action="store", type=str)
+    parser.add_argument("input_csv", help="Fragment mapping file.", metavar="CSV", action="store", type=str)
+    parser.add_argument("output_csv", help="File to write the interaction matrix to.", metavar="CSV", action="store",
+                        type=str)
+    # parser.add_argument("-b", "--bin-size", help="Size of the bins.", metavar="SIZE", action="store",
     #                     type=int, default=500)
-    parser.add_argument("-d", "--distance-cutoff", help="Maximum distance between a fragment and a restriction site",
+    parser.add_argument("-d", "--distance-cutoff", help="Maximum distance between a fragment and a restriction site.",
                         metavar="DISTANCE", action="store", type=int, default=20)
     args = parser.parse_args()
 
@@ -91,7 +93,7 @@ if __name__ == '__main__':
     del mapping_table
 
     # create symmetric interaction pairs
-    logging.info("Exporting interacting pairs to %s_interactions.csv ...", args.input_csv)
+    logging.info("Exporting interacting pairs to %s ...", args.output_csv)
     site_interactions = []
     for read, chr_mapping in sites_per_read.items():
         for c1, pos1 in chr_mapping.items():
@@ -104,15 +106,5 @@ if __name__ == '__main__':
     del sites_per_read
     scatter_points = np.array(site_interactions)
     del site_interactions
-    np.savetxt("{}_interactions.csv".format(args.input_csv), scatter_points,
+    np.savetxt(args.output_csv, scatter_points,
                header="chr.1;pos.1;chr.2;pos.2", comments="", delimiter=";", encoding="utf-8", fmt="%s")
-
-    # plot the matrix
-    # fig, ax = plt.subplots(nrows=1, ncols=1)
-    # ax.set_facecolor("k")
-    # plt.scatter(scatter_points[:, 0], scatter_points[:, 1])
-    # plt.hist2d(scatter_points[:, 0], scatter_points[:, 1], bins=args.bin_size, cmap=plt.get_cmap("inferno"), vmax=15)
-    # plt.colorbar()
-    # sns.jointplot(scatter_points[:, 0], scatter_points[:, 1], kind="kde", shade=True)
-    #
-    # plt.show()

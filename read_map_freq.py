@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
 
 import argparse
-import glob
 import logging
-import os
 
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import pysam
 import seaborn as sns
-from matplotlib.backends.backend_pdf import PdfPages
 
 plt.style.use("ggplot")
 matplotlib.rcParams['figure.figsize'] = (16, 8)
@@ -224,7 +220,7 @@ def read_sam(fname, mapq_cutoff=0, sam_region="."):
 def merge_and_count_freq(reads, dist_cutoff):
     """
     Merge fragments into a single fragment that are mapped close to each other.
-    The frequency of mapped fragments per read are returned as a DataFrame.
+    The frequency of mapped fragments per read are returned as a Numpy array.
 
     :type reads: dict
     :param reads: Dictionary containing a WeightedLinkedList associated with the
@@ -234,65 +230,15 @@ def merge_and_count_freq(reads, dist_cutoff):
     :param dist_cutoff: Minimum distance between fragments before they are no
                         longer merged.
 
-    :rtype: pd.DataFrame
-    :return: DataFrame containing the frequencies of the number of fragments per
+    :rtype: numpy.core.multiarray
+    :return: Array containing the frequencies of the number of fragments per
              read mapped.
     """
     logging.info("Merging fragments fewer than %d bases removed from each other ...", dist_cutoff)
     counts = []
     for key, value in reads.items():
         counts.append(len(value.collapse_nodes(dist_cutoff)))
-    bins = np.array(np.unique(counts, return_counts=True))
-    return pd.DataFrame(bins[1:, :], columns=bins[0])
-
-
-def plot_frequencies(frequencies, outfile):
-    """
-    Create matplotlib plots from a pandas DataFrame.
-
-    :type frequencies: pd.DataFrame
-    :param frequencies: DataFrame containing the frequencies of the number of
-                        fragments per read mapped.
-
-    :type outfile: str
-    :param outfile: Location of the PDF output file.
-    """
-    logging.info("Generating bar plot and writing to %s", outfile)
-    with PdfPages(outfile) as pdf:
-        # log scale
-        frequencies.plot(kind="bar", linewidth=0, legend=False, logy=True)
-        plt.title("Mapped fragments per read")
-        plt.xlabel("Mapped fragments")
-        plt.ylabel("Frequency ($\\log_{10}$)")
-        plt.tight_layout()
-        pdf.savefig()
-        plt.close()
-        # linear scale
-        frequencies.plot(kind="bar", linewidth=0, legend=False)
-        plt.title("Mapped fragments per read")
-        plt.xlabel("Mapped fragments")
-        plt.ylabel("Frequency")
-        plt.tight_layout()
-        pdf.savefig()
-        plt.close()
-        # clustered heatmap
-        df = (frequencies / frequencies.sum()).transpose()
-        sns.clustermap(df * 100, annot=False, fmt=".0f", vmin=0, vmax=100, cmap="inferno", col_cluster=False,
-                       figsize=matplotlib.rcParams['figure.figsize'])
-        pdf.savefig()
-        plt.close()
-        # annotated heatmap
-        fig, ax = plt.subplots(figsize=(8, 16))
-        sns.heatmap(df * 100, annot=frequencies.transpose(), fmt=".0f", vmin=0, vmax=100, cmap="inferno", ax=ax)
-        plt.tight_layout()
-        pdf.savefig()
-        plt.close()
-        # cumulative heatmap
-        fig, ax = plt.subplots(figsize=(8, 16))
-        sns.heatmap(df.cumsum(axis=1) * 100, annot=False, fmt=".0f", vmin=0, vmax=100, cmap="inferno", ax=ax)
-        plt.tight_layout()
-        pdf.savefig()
-        plt.close()
+    return np.array(np.unique(counts, return_counts=True))
 
 
 def export_mapped_regions(reads, outfile):
@@ -323,38 +269,21 @@ if __name__ == "__main__":
 
     # Get command argument
     parser = argparse.ArgumentParser()
-    parser.add_argument("input_sam", help="Input SAM/BAM files.", metavar="INFILE", action="store", type=str,
-                        nargs="+")
-    parser.add_argument("-o", "--img-output", help="Output location of the PDF images", metavar="PDF", action="store",
-                        type=str)
-    parser.add_argument("-c", "--csv-output", help="Output location of the CSV mapped regions file", metavar="DIR",
+    parser.add_argument("input_sam", help="Input SAM/BAM file.", metavar="INFILE", action="store", type=str)
+    parser.add_argument("-c", "--csv-output", help="Output location of the CSV mapped regions file.", metavar="CSV",
                         action="store", type=str)
     parser.add_argument("-d", "--distance-cutoff", help="Minimum distance between two fragments before considering "
-                                                        "them as separate",
+                                                        "them as separate.",
                         metavar="CUTOFF", action="store", type=int, default=1000)
-    parser.add_argument("-q", "--minimum-mapq", help="Minimum MAPQ that a fragment needs to have", metavar="MQ",
+    parser.add_argument("-q", "--minimum-mapq", help="Minimum MAPQ that a fragment needs to have.", metavar="MQ",
                         action="store", type=int, default=1)
-    parser.add_argument("-r", "--region", help="Limit read to specific region", metavar="REGION",
+    parser.add_argument("-r", "--region", help="Limit read to specific region.", metavar="REGION",
                         action="store", type=str, default=".")
     args = parser.parse_args()
 
-    bins = pd.DataFrame()
-    xlab = []
-    for globfile in args.input_sam:
-        for samfile in glob.iglob(globfile):
-            mapped_reads = read_sam(samfile, args.minimum_mapq, args.region)
-            df = merge_and_count_freq(mapped_reads, args.distance_cutoff)
-            bins = pd.concat([bins, df], axis=0, ignore_index=True)
-            xlab.append(os.path.basename(samfile))
-            if args.csv_output is not None:
-                export_mapped_regions(mapped_reads, os.path.join(args.csv_output, os.path.basename(samfile)) + ".csv")
-
-    bins.fillna(0, inplace=True)
-    bins = bins.transpose()
-    bins.columns = xlab
-
-    if args.img_output is not None:
-        bins.to_csv(args.img_output + ".csv")
-        plot_frequencies(bins, args.img_output)
+    mapped_reads = read_sam(args.input_sam, args.minimum_mapq, args.region)
+    arr = merge_and_count_freq(mapped_reads, args.distance_cutoff)
+    if args.csv_output is not None:
+        export_mapped_regions(mapped_reads, args.csv_output)
 
     logging.shutdown()
