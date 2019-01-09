@@ -6,7 +6,8 @@ import logging
 import os
 from glob import iglob
 
-from Bio import SeqIO, Restriction
+from Bio import Seq, SeqIO, Restriction
+from Bio.Alphabet import IUPAC
 from Bio.SeqRecord import SeqRecord
 
 
@@ -31,27 +32,31 @@ def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme
         logging.info("Sampling %s reads from %s ...", sample_size if sample_size > 0 else "all", fastq_in)
         total_fragments = 0
         with gzip.open(fastq_in, "rt") as fin:
-            handle = SeqIO.parse(fin, "fastq")
+            line = 0
             rec_idx = 0
-            for record in handle:
+            for record in fin:
+                line += 1
+                if (line + 2) % 4 != 0:  # sequence lines in FASTQ
+                    continue
+                seq = Seq.Seq(record.strip(), alphabet=IUPAC.ambiguous_dna)
                 fgmt_idx = 0
                 fragments = []
                 if fragment_length > 0:
                     # fixed-length fragmentation mode
-                    fragments = [record.seq[i:i + fragment_length] for i in
-                                 range(0, len(record.seq), fragment_interval)]
+                    fragments = [seq[i:i + fragment_length] for i in
+                                 range(0, len(seq), fragment_interval)]
                 elif restr_enzyme is not None:
                     # enzyme-based fragmentation mode
-                    fragments = restr_enzyme.catalyse(record.seq)
+                    fragments = restr_enzyme.catalyse(seq)
                 else:
                     # no fragmentation
-                    fragments = [record.seq]
+                    fragments = [seq]
 
                 for digestion in fragments:
                     rec = SeqRecord(
                         digestion,
                         id="Fq.Id:{:s};Rd.Id:{:d};Rd.Ln:{:d};Fr.Id:{:d};Fr.Ln:{:d}".format(
-                            fname, rec_idx, len(record.seq), fgmt_idx, len(digestion)),
+                            fname, rec_idx, len(seq), fgmt_idx, len(digestion)),
                         name="",
                         description=""
                     )
