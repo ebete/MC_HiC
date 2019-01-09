@@ -15,7 +15,7 @@ raw_files = Channel
 // Fragment the reads
 process createFragments {
 	cpus 1
-	memory "500MB"
+	memory "250MB"
 	tag "${dataset}"
 
 	input:
@@ -25,17 +25,15 @@ process createFragments {
 	set dataset, file('fragments.fa.gz') into read_fragments
 	
 	script:
-	"""
-	python3 ${params.script_dir}/fastq_subsample_and_merge.py ${params.fragments} fragments.fa.gz ${fq_file}
-	"""
+	"""python3 "${params.script_dir}/fastq_subsample_and_merge.py" ${params.fragments} fragments.fa.gz "${fq_file}" """
 }
 
 // Align to reference and export alignments
 process alignReads {
 	label "multicore"
-	memory { 4.GB * task.cpus }
+	memory { 2.GB * task.cpus }
 	tag "${dataset}"
-	publishDir "result", mode: "rellink", overwrite: true
+	publishDir "${params.output_dir}", mode: "copy", overwrite: true
 
 	input:
 	set dataset, reads from read_fragments
@@ -45,19 +43,19 @@ process alignReads {
 	val dataset into alignment_done
 
 	script:
-	"""
-	bwa mem -x ont2d -t ${task.cpus} ${params.bwa} ${params.ref} ${reads} \
-	| samtools view -b \
-	| samtools sort > ${dataset}.bam
+"""
+bwa mem -x ont2d -t ${task.cpus} ${params.bwa} "${params.ref}" "${reads}" \
+| samtools view -b \
+| samtools sort > "${dataset}.bam"
 
-	samtools index ${dataset}.bam ${dataset}.bam.bai
-	"""
+samtools index "${dataset}.bam" "${dataset}.bam.bai"
+"""
 }
 
 // Filter and merge alignments
 process filterAndMerge {
 	cpus 1
-	memory "500MB"
+	memory "5GB"
 	tag "${dataset}"
 
 	input:
@@ -67,17 +65,15 @@ process filterAndMerge {
 	set dataset, file("positions.csv") into positions_file
 
 	script:
-	"""
-	python3 ${params.script_dir}/read_map_freq.py ${params.filter} -c positions.csv ${alignment}
-	"""
+	"""python3 "${params.script_dir}/read_map_freq.py" ${params.filter} -c "positions.csv" ${alignment}"""
 }
 
 // Map reads to restriction sites
 process mapToRestriction {
 	cpus 1
-	memory "2GB"
+	memory "6GB"
 	tag "${dataset}"
-	publishDir "result", mode: "rellink", overwrite: true
+	publishDir "${params.output_dir}", mode: "copy", overwrite: true
 
 	input:
 	set dataset, file(positions) from positions_file
@@ -87,9 +83,39 @@ process mapToRestriction {
 	val dataset into interactions_done
 
 	script:
-	"""
-	python3 ${params.script_dir}/sam_to_restriction_site.py ${params.restriction} ${params.ref}.gz.DpnII ${positions} ${dataset}.csv
-	"""
+	"""python3 "${params.script_dir}/sam_to_restriction_site.py" ${params.restriction} "${params.ref}.gz.DpnII" "${positions}" "${dataset}.csv" """
+}
+
+// Generate statistics
+process interactionStatistics {
+	cpus 1
+	memory "50MB"
+	tag "${dataset}"
+
+	input:
+	set dataset, file(interactions) from interaction_file
+
+	output:
+	stdout interaction_stats
+
+	script:
+"""
+#!/usr/bin/env python3
+
+fname = "${interactions}"
+with open(fname, "r") as f:
+	next(f)
+	trans = 0
+	total = 0
+	for line in f:
+		cols = line.strip().split(';')
+		if cols[0] != cols[2]:
+			trans += 1
+		total += 1
+	print(f"[{fname}]:")
+	print(f"interactions: {total}")
+	print(f"trans: {trans} ({trans/total*100:.1f}%)")
+"""
 }
 
 
@@ -104,6 +130,10 @@ interactions_done.subscribe onNext: {
 	println "Mapped interactions of ${it}"
 }, onComplete: {
 	println "Interaction mapping done!"
+}
+
+interaction_stats.subscribe onNext: {
+	println "${it}"
 }
 
 // vim: noet:ai
