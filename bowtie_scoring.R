@@ -38,10 +38,18 @@ df$bt2_scoring <- bt2_scoring(df$x)
 
 # plotting
 df.melted <- melt(df, id.vars = "x")
-ggplot(df.melted, aes(x = x, y = value, color = variable)) +
+score_plot <- ggplot(df.melted, aes(x = x, y = value, color = variable)) +
   geom_line() +
   xlab("Alignment length") +
   ylab("Alignment score") +
   ggtitle("Bowtie2 scoring functions") +
-  theme_bw() +
-  scale_color_brewer(palette = "Set1")
+  scale_color_brewer(palette = "Dark2") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    legend.text = element_text(margin = margin(r = 0.5, l = 0.1, unit = "cm"))
+  ) +
+  guides(colour = guide_legend(nrow = 2))
+score_plot

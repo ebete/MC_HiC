@@ -2,9 +2,10 @@
 
 # Package import
 suppressPackageStartupMessages({
-    library(scales)
-    library(ggplot2)
-    library(reshape2)
+  library(scales)
+  library(ggplot2)
+  library(reshape2)
+  library(ggpubr)
 })
 
 # Function declarations
@@ -27,13 +28,13 @@ for (i in m) {
 
 # Plot probabilities
 df <- melt(df, id.vars = "n")
-colnames(df) <- c("length", "mismatches", "probability")
-ggplot(df, aes(x = length, y = probability, colour = mismatches)) +
+colnames(df) <- c("length", "k", "probability")
+mm_plot <- ggplot(df, aes(x = length, y = probability, colour = k)) +
   geom_line() +
   scale_x_continuous(breaks = pretty_breaks()) +
   scale_y_continuous(breaks = pretty_breaks(), limits = c(0, 1), labels = yscale) +
   labs(
-  title = "Probability of finding at most n mismatches",
+  title = "Probabilities for at most k mismatches",
   subtitle = sprintf("ONT error rate: %.0f%%", mismatch_rate * 100)
   ) +
   xlab("Sequence length") +
@@ -41,9 +42,15 @@ ggplot(df, aes(x = length, y = probability, colour = mismatches)) +
   scale_colour_brewer(palette = "Dark2") +
   theme_minimal() +
   theme(
-  plot.title = element_text(hjust = 0.5, face = "bold"),
-  plot.subtitle = element_text(hjust = 0),
-  legend.position = "right"
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    plot.subtitle = element_text(hjust = 0),
+    legend.position = "right",
+#    legend.title = element_blank(),
+    legend.text = element_text(margin = margin(r = 0.5, l = 0.1, unit = "cm"))
   ) +
-  geom_text(aes(label = ifelse(length %in% label_points, sprintf("%.0f%%", probability * 100), "")), hjust = - 0.2, vjust = 0, show.legend = F) +
-  geom_point(data = df[df$length %in% label_points,], aes(colour = mismatches), show.legend = F)
+  guides(colour = guide_legend(ncol = 1)) +
+  geom_text(aes(label = ifelse(length %in% label_points, sprintf("%.0f%%", probability * 100), "")), hjust = 1, vjust = 1.5, show.legend = F) +
+  geom_point(data = df[df$length %in% label_points,], aes(colour = k), show.legend = F)
+mm_plot
+
+#ggarrange(mm_plot, score_plot, ncol = 2, labels = c("(1)", "(2)"))

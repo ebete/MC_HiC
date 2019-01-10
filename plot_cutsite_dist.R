@@ -24,6 +24,7 @@ for (chr in levels(sites_dist$chromosome)) {
   colnames(df) <- c(chr)
   sites_ecdf <- cbind(sites_ecdf, df)
 }
+rm(df, f, chr)
 
 # plot DpnII intervals
 int_plot <- ggplot(sites_dist, aes(x = distance, y = chromosome)) +
@@ -75,15 +76,38 @@ colnames(sites_ecdf.melted) <- c("interval", "chromosome", "ecdf")
 ecdf_plot <- ggplot(sites_ecdf.melted, aes(x = interval, y = ecdf, colour = chromosome)) +
   geom_line() +
   geom_vline(xintercept = 256, linetype = "dotted", color = "red") + # theoretical average DpnII interval
-  scale_x_continuous() +
+  scale_x_continuous(limits = c(0, 500)) +
   scale_y_continuous(labels = function(x) { sprintf("%.0f%%", x * 100)}, limits = c(0, 1)) +
   ggtitle("ECDF of DpnII site intervals in mm9") +
   xlab("Interval (bases)") +
   ylab("Fraction of intervals shorter") +
   theme_minimal() +
   theme(
-  plot.title = element_text(hjust = 0.5, face = "bold"),
-  legend.position = "right"
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "right"
   ) +
   annotate("text", x = 256, y = 0.4, label = "Theoretical average interval", colour = "red", vjust = - 1, hjust = 0, angle = 270)
 ecdf_plot
+
+# plot EDF of DpnII interval
+interval_avg <- mean(sites_dist$distance[sites_dist$distance < 2000]) # (ignore 2k+ intervals)
+edf_plot <- ggplot(sites_dist, aes(x = distance, fill = chromosome)) +
+  geom_density(alpha = 0.3) +
+  geom_vline(xintercept = 256, linetype = "dashed", color = "darkred") + # theoretical DpnII interval
+  geom_vline(xintercept = interval_avg, linetype = "dashed", color = "darkgreen") + # average DpnII interval
+  scale_x_continuous(limits = c(0, 1000)) +
+  scale_y_continuous() +
+  ggtitle("Distribution of DpnII site intervals in mm9") +
+  xlab("Interval (bases)") +
+  ylab("Density") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "right",
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank()
+  ) +
+  annotate("text", x = 256, y = 0.0025, label = "Theoretical interval: 256", colour = "darkred", vjust = - 1, hjust = 0.5, angle = 270) +
+  annotate("text", x = interval_avg, y = 0.0025, label = sprintf("Average interval: %.0f", interval_avg), colour = "darkgreen", vjust = - 1, hjust = 0.5, angle = 270)
+edf_plot
