@@ -8,7 +8,7 @@ suppressPackageStartupMessages({
 })
 
 undigested <- scan("/data0/thom/temp/LVR_HS5_NP_len.txt", numeric())
-digested <- scan("/data0/thom/temp/LVR_HS5_NP_digested_len.txt", numeric())
+digested <- scan("/tmp/hs5.txt", numeric())
 undigested_aligned <- scan("/data0/thom/temp/bwa_run_len.txt", numeric())
 
 df <- rbind(

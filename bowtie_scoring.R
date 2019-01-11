@@ -44,7 +44,7 @@ score_plot <- ggplot(df.melted, aes(x = x, y = value, color = variable)) +
   ylab("Alignment score") +
   ggtitle("Bowtie2 scoring functions") +
   scale_color_brewer(palette = "Dark2") +
-  theme_minimal() +
+  theme_classic() +
   theme(
     plot.title = element_text(hjust = 0.5, face = "bold"),
     legend.position = "bottom",

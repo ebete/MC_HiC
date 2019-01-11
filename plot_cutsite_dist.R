@@ -36,7 +36,7 @@ int_plot <- ggplot(sites_dist, aes(x = distance, y = chromosome)) +
   ggtitle("Distance between DpnII sites in mm9") +
   xlab("Site interval (bases)") +
   ylab("Chromosome") +
-  theme_minimal() +
+  theme_classic() +
   theme(
   plot.title = element_text(hjust = 0.5),
   legend.position = "right",
@@ -54,7 +54,7 @@ dens_plot <- ggplot(sites, aes(x = position, y = chromosome)) +
   ggtitle("DpnII sites in mm9") +
   xlab("Position (Mb)") +
   ylab("Chromosome") +
-  theme_minimal() +
+  theme_classic() +
   theme(
   plot.title = element_text(hjust = 0.5),
   legend.position = "right",
@@ -81,7 +81,7 @@ ecdf_plot <- ggplot(sites_ecdf.melted, aes(x = interval, y = ecdf, colour = chro
   ggtitle("ECDF of DpnII site intervals in mm9") +
   xlab("Interval (bases)") +
   ylab("Fraction of intervals shorter") +
-  theme_minimal() +
+  theme_classic() +
   theme(
     plot.title = element_text(hjust = 0.5, face = "bold"),
     legend.position = "right"
@@ -100,13 +100,12 @@ edf_plot <- ggplot(sites_dist, aes(x = distance, fill = chromosome)) +
   ggtitle("Distribution of DpnII site intervals in mm9") +
   xlab("Interval (bases)") +
   ylab("Density") +
-  theme_minimal() +
+  theme_classic() +
   theme(
     plot.title = element_text(hjust = 0.5, face = "bold"),
     legend.position = "right",
     axis.ticks.y = element_blank(),
-    axis.text.y = element_blank(),
-    axis.title.y = element_blank()
+  axis.text.y = element_blank()
   ) +
   annotate("text", x = 256, y = 0.0025, label = "Theoretical interval: 256", colour = "darkred", vjust = - 1, hjust = 0.5, angle = 270) +
   annotate("text", x = interval_avg, y = 0.0025, label = sprintf("Average interval: %.0f", interval_avg), colour = "darkgreen", vjust = - 1, hjust = 0.5, angle = 270)

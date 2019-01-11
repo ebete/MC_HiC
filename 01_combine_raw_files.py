@@ -4,14 +4,10 @@
 # combine fasq: cat *.fastq | gzip > ../../ESCs-V121-PM.fastq.gz
 # run: ri=19; qsub -N splt${ri} -l h_rt=40:00:00 -l h_vmem=20G -pe threaded 1 ~/bulk/bin/run_script.sh "python2 ./01_combine_raw_files.py ${ri}"
 
+import argparse
+import gzip
 # Initialization
 from glob import glob
-import gzip
-from os import path
-import sys
-import argparse
-
-from mchc_tools import get_vp_info
 
 # Get command argument
 parser = argparse.ArgumentParser()
@@ -20,9 +16,9 @@ parser.add_argument("output_fasta", help="Output FASTA file (gzipped).", metavar
 args = parser.parse_args()
 
 # Read gz files
-print('Writing sequencing data to: {:s}'.format(parser.output_fasta))
+print('Writing sequencing data to: {:s}'.format(args.output_fasta))
 
-with gzip.open(parser.output_fasta, 'wt') as fastq_fid:
+with gzip.open(args.output_fasta, 'wt') as fastq_fid:
     for fastq_ind, fastq_id in enumerate(vp_info['seq_file_indices'].split(';')):
         raw_ptr = './raw_files/raw_' + fastq_id + '_*.fastq.gz'
         raw_flst = glob(raw_ptr)

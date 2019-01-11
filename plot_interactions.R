@@ -9,7 +9,7 @@ suppressPackageStartupMessages({
   library(cowplot)
 })
 
-interactions <- read.csv("/data0/thom/temp/bwa_fixed.bam.csv_interactions.csv", sep = ";")
+interactions <- read.csv("/data0/thom/pipeline/results_4c/NPS_LVR-HS5-NP_--000004--_Best.csv", sep = ";")
 chr7 <- interactions[(interactions$chr.1 == "chr7") & (interactions$chr.2 == "chr7"),]
 
 # interaction map
