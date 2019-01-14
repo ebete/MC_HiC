@@ -22,7 +22,7 @@ process createFragments {
 	set dataset, file(fq_file) from raw_files
 
 	output:
-	set dataset, file('fragments.fa.gz') into read_fragments
+	set dataset, file("fragments.fa.gz") into read_fragments
 	
 	script:
 	"""python3 "${params.script_dir}/fastq_subsample_and_merge.py" ${params.fragments} fragments.fa.gz "${fq_file}" """
@@ -155,4 +155,4 @@ interaction_stats.subscribe onNext: {
 	println "${it}"
 }
 
-// vim: noet:ai
+// vim: noet:ai:colorcolumn=0

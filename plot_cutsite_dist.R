@@ -91,7 +91,7 @@ ecdf_plot
 
 # plot EDF of DpnII interval
 interval_avg <- mean(sites_dist$distance[sites_dist$distance < 2000]) # (ignore 2k+ intervals)
-edf_plot <- ggplot(sites_dist, aes(x = distance, fill = chromosome)) +
+edf_plot <- ggplot(sites_dist[sites_dist$chromosome != "chrM",], aes(x = distance, fill = chromosome)) +
   geom_density(alpha = 0.3) +
   geom_vline(xintercept = 256, linetype = "dashed", color = "darkred") + # theoretical DpnII interval
   geom_vline(xintercept = interval_avg, linetype = "dashed", color = "darkgreen") + # average DpnII interval

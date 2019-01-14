@@ -52,7 +52,7 @@ def get_matches(cigar_tuple):
         if code in "HS":  # skip clipped
             continue
         total += v
-        if code in "M=":  # (mis)matches
+        if code in "M=X":  # (mis)matches
             matches += v
     return total, matches
 
