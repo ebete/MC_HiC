@@ -33,21 +33,40 @@ process alignReads {
 	label "multicore"
 	memory { 2.GB * task.cpus }
 	tag "${dataset}"
-	publishDir "${params.output_dir}", mode: "copy", overwrite: true
 
 	input:
 	set dataset, reads from read_fragments
 
 	output:
-	set dataset, file("${dataset}.bam"), file("${dataset}.bam.bai") into alignment_file
+	set dataset, file("aligned.bam"), file("aligned.bam.bai") into alignment_file
 	val dataset into alignment_done
 
 	script:
 """
 bwa mem -x ont2d -t ${task.cpus} ${params.bwa} "${params.ref}" "${reads}" \
-| samtools view -b \
-| samtools sort > "${dataset}.bam"
+| samtools view -q 1 -F 260 -u \
+| samtools sort -l 6 -o "aligned.bam"
 
+samtools index "aligned.bam" "aligned.bam.bai"
+"""
+}
+
+// Filter based on CIGAR string
+process cigarFilter {
+	cpus 1
+	memory "100MB"
+	tag "${dataset}"
+	publishDir "${params.output_dir}", mode: "copy", overwrite: true
+
+	input:
+	set dataset, file(alignment), file(index) from alignment_file
+
+	output:
+	set dataset, file("${dataset}.bam"), file("${dataset}.bam.bai") into filtered_file
+
+	script:
+"""
+python3 "${params.script_dir}/cigar_parse.py" ${params.cigar} "${alignment}" "${dataset}.bam"
 samtools index "${dataset}.bam" "${dataset}.bam.bai"
 """
 }
@@ -59,7 +78,7 @@ process filterAndMerge {
 	tag "${dataset}"
 
 	input:
-	set dataset, file(alignment), file(index) from alignment_file
+	set dataset, file(alignment), file(index) from filtered_file
 
 	output:
 	set dataset, file("positions.csv") into positions_file
