@@ -56,17 +56,38 @@ process cigarFilter {
 	cpus 1
 	memory "100MB"
 	tag "${dataset}"
-	publishDir "${params.output_dir}", mode: "copy", overwrite: true
 
 	input:
 	set dataset, file(alignment), file(index) from alignment_file
 
 	output:
-	set dataset, file("${dataset}.bam"), file("${dataset}.bam.bai") into filtered_file
+	set dataset, file("cigar.bam"), file("cigar.bam.bai") into cigarfiltered_file
 
 	script:
 """
-python3 "${params.script_dir}/cigar_parse.py" ${params.cigar} "${alignment}" "${dataset}.bam"
+python3 "${params.script_dir}/cigar_parse.py" ${params.cigar} "${alignment}" "cigar.bam"
+
+samtools index "cigar.bam" "cigar.bam.bai"
+"""
+}
+
+// Extract all chimeric reads
+process extractChimeric {
+	cpus 1
+	memory "500MB"
+	tag "${dataset}"
+	publishDir "${params.output_dir}", mode: "copy", overwrite: true
+
+	input:
+	set dataset, file(alignment), file(index) from cigarfiltered_file
+
+	output:
+	set dataset, file("${dataset}.bam"), file("${dataset}.bam.bai") into chimeric_file
+
+	script:
+"""
+python3 "${params.script_dir}/extract_chimeric.py" "${alignment}" "${dataset}.bam"
+
 samtools index "${dataset}.bam" "${dataset}.bam.bai"
 """
 }
@@ -78,7 +99,7 @@ process filterAndMerge {
 	tag "${dataset}"
 
 	input:
-	set dataset, file(alignment), file(index) from filtered_file
+	set dataset, file(alignment), file(index) from chimeric_file
 
 	output:
 	set dataset, file("positions.csv") into positions_file
@@ -132,8 +153,8 @@ with open(fname, "r") as f:
 			trans += 1
 		total += 1
 	print(f"[{fname}]:")
-	print(f"interactions: {total}")
-	print(f"trans: {trans} ({trans/total*100:.1f}%)")
+	print(f"\\x1b[97;41minteractions\\x1b[0m: {total}")
+	print(f"\\x1b[97;41mtrans\\x1b[0m: {trans} ({trans/total*100:.1f}%)")
 """
 }
 
