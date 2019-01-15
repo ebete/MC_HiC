@@ -27,7 +27,7 @@ def parse_cigar(sam_input, sam_output, region, unclipped_cutoff, match_cutoff):
             align_len, matches = get_matches(read.cigar)
             seq_len, unclipped_len = unclipped_length(read.cigar)
             try:
-                if (unclipped_len / seq_len) < unclipped_cutoff:
+                if unclipped_len < unclipped_cutoff:
                     continue
                 if (matches / align_len) < match_cutoff:
                     continue
@@ -38,17 +38,14 @@ def parse_cigar(sam_input, sam_output, region, unclipped_cutoff, match_cutoff):
 
 
 def to_cigar_string(cigar_tuple):
-    cigar = ""
-    for k, v in cigar_tuple:
-        cigar += str(v) + cigar_decoder.get(k, " ")
-    return cigar
+    return "".join(map(lambda x: f"{x[1]}{cigar_decoder.get(x[0], '-')}", cigar_tuple))
 
 
 def get_matches(cigar_tuple):
     total = 0
     matches = 0
     for k, v in cigar_tuple:
-        code = cigar_decoder.get(k, " ")
+        code = cigar_decoder.get(k, "-")
         if code in "HS":  # skip clipped
             continue
         total += v
@@ -61,7 +58,7 @@ def unclipped_length(cigar_tuple):
     unclipped = 0
     total = 0
     for k, v in cigar_tuple:
-        code = cigar_decoder.get(k, " ")
+        code = cigar_decoder.get(k, "-")
         total += v
         if code in "HS":  # skip clipped
             continue
@@ -78,7 +75,8 @@ if __name__ == "__main__":
     parser.add_argument("output_sam", help="Output BAM file.", metavar="SAM", action="store", type=str)
     parser.add_argument("-r", "--region", help="Limit read to specific region.", metavar="REGION",
                         action="store", type=str, default=".")
-    parser.add_argument("-u", "--unclipped", help="Fraction of alignment that has to be unclipped.", metavar="CUTOFF",
+    parser.add_argument("-u", "--unclipped", help="Minimum length of unclipped part of the alignment.",
+                        metavar="CUTOFF",
                         action="store", type=float, default=0)
     parser.add_argument("-m", "--matching", help="Fraction of the alignment that has to be matches.", metavar="CUTOFF",
                         action="store", type=float, default=0)
