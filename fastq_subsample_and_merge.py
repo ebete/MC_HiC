@@ -4,6 +4,7 @@ import argparse
 import gzip
 import logging
 import os
+import re
 from glob import iglob
 
 from Bio import Seq, SeqIO, Restriction
@@ -27,7 +28,9 @@ def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme
         logging.info("Using restriction enzyme %s for digestion.", restriction_enzyme)
 
     for fastq_in in fastq_files:
-        fname = os.path.basename(fastq_in).split("_")[1]  # TODO: This only works for some file names
+        # create a
+        fname = os.path.basename(fastq_in).partition(".")[0]
+        fname = re.sub("[\W]+", "_", fname)
 
         logging.info("Sampling %s reads from %s ...", sample_size if sample_size > 0 else "all", fastq_in)
         total_fragments = 0
