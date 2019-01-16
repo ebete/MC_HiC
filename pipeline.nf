@@ -43,7 +43,7 @@ process alignReads {
 
 	script:
 """
-bwa mem -x ont2d -t ${task.cpus} ${params.bwa} "${params.ref}" "${reads}" \
+bwa mem -t ${task.cpus} ${params.bwa} "${params.ref}" "${reads}" \
 | samtools view -q 1 -F 260 -u \
 | samtools sort -l 6 -o "aligned.bam"
 
