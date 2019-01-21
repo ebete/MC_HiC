@@ -41,13 +41,38 @@ def find_read_mappings(read_id, sam_file):
     return alignments, read_seq
 
 
-def cigar_to_read_coverage(cigar_tuple):
+def mapping_to_read_coverage(read):
+    md_list = ""
+    for k, v in read.tags:
+        if k == "MD":
+            md_list = re.findall(r"(?:[A-Z])|(?:\^[A-Z]+)|(?:[0-9]+)", v)
+            break
+    md_string = ""
+    for x in md_list:
+        try:  # match
+            matches = int(x)
+            md_string += "-" * matches
+            continue
+        except ValueError:
+            pass
+        if x[0] == "^":  # insertion
+            # md_string += x[1:].upper()
+            pass
+        else:  # mismatch
+            md_string += x.lower()
+
     cov = ""
-    for k, v in cigar_tuple:
-        if k in (0, 1, 7, 8):  # aligned
-            cov += cigar_decoder.get(k, "#") * v
-        elif k in (4, 5):  # clipped
+    for k, v in read.cigar:
+        if k in (4, 5):  # clipped
             cov += " " * v
+        elif k in (0, 7, 8):  # aligned
+            # cov += cigar_decoder.get(k, "#") * v
+            cov += md_string[:v]
+            md_string = md_string[v:]
+        elif k == 1:  # insertion
+            cov += cigar_decoder.get(k, "#") * v
+        # elif not md_added:
+        #     cov += md_string
     return cov
 
 
@@ -68,5 +93,5 @@ if __name__ == '__main__':
     print(">{}".format(args.read_id))
     print(seq)
     for x in aln:
-        coverage = cigar_to_read_coverage(x.cigar)
+        coverage = mapping_to_read_coverage(x)
         print(coverage)
