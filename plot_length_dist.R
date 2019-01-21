@@ -11,21 +11,19 @@ unmapped <- scan("/data0/thom/pipeline/unmapped_len.txt", numeric())
 mapped <- scan("/data0/thom/pipeline/mapped_len.txt", numeric())
 
 df <- rbind(
-data.frame(source = "mapped", length = mapped),
-data.frame(source = "unmapped", length = unmapped)
+data.frame(source = "cis mapped", length = mapped),
+data.frame(source = "trans mapped", length = unmapped)
 )
 
 ggplot(df, aes(x = length, fill = source)) +
   geom_density(alpha = 0.5) +
-  scale_x_continuous(limits = c(0, 1000), labels = function(x) {sprintf("%.2f Kb", x / 1e3)}) +
+#  scale_x_continuous(limits = c(0, 1000)) +
   scale_y_continuous() +
   scale_fill_brewer(palette = "Dark2") +
-  theme_minimal() +
+  theme_classic() +
   theme(
   axis.text.y = element_blank(),
   axis.title.y = element_blank(),
-  panel.grid.major = element_blank(),
-  panel.grid.minor = element_blank(),
   plot.title = element_text(hjust = 0.5, face = "bold"),
   legend.position = "bottom"
   ) +

@@ -28,8 +28,8 @@ make_plot <- function(n, k, p, label_points) {
   colnames(df) <- c("length", "k", "probability")
   mm_plot <- ggplot(df, aes(x = length, y = probability, colour = k)) +
     geom_line() +
-    scale_x_continuous(breaks = pretty_breaks()) +
-    scale_y_continuous(breaks = pretty_breaks(), limits = c(0, 1), labels = yscale) +
+    scale_x_continuous(breaks = pretty_breaks(), expand = c(0, 0)) +
+    scale_y_continuous(breaks = pretty_breaks(), expand = c(0, 0), limits = c(0, 1), labels = yscale) +
     labs(
     title = "Probabilities for at most k errors",
     subtitle = sprintf("ONT error rate: %.0f%%", p * 100)

@@ -95,8 +95,8 @@ edf_plot <- ggplot(sites_dist[sites_dist$chromosome != "chrM",], aes(x = distanc
   geom_density(alpha = 0.3) +
   geom_vline(xintercept = 256, linetype = "dashed", color = "darkred") + # theoretical DpnII interval
   geom_vline(xintercept = interval_avg, linetype = "dashed", color = "darkgreen") + # average DpnII interval
-  scale_x_continuous(limits = c(0, 1000)) +
-  scale_y_continuous() +
+  scale_x_continuous(limits = c(0, 1000), expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
   ggtitle("Distribution of DpnII site intervals in mm9") +
   xlab("Interval (bases)") +
   ylab("Density") +
