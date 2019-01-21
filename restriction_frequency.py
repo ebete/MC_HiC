@@ -102,21 +102,25 @@ if __name__ == "__main__":
 
     # Get command argument
     parser = argparse.ArgumentParser()
-    parser.add_argument("input_fasta", help="Input FASTA genomes (gzipped)", metavar="INFILE", action="store",
+    parser.add_argument("input_fasta", help="Input FASTA genomes (gzipped).", metavar="INFILE", action="store",
                         type=str, nargs="+")
-    parser.add_argument("-o", "--output-index", help="Create restriction site index files", action="store_true")
-    parser.add_argument("-f", "--overwrite", help="Overwrite existing index files", action="store_true")
-    parser.add_argument("-e", "--enzyme", help="Restriction enzyme to calculate cutting frequency of", metavar="ENZYME",
-                        action="store", type=str, default="DpnII")
-    parser.add_argument("-m", "--max-mismatch", help="Maximum number of mismatches in the cutting site",
+    parser.add_argument("-e", "--enzyme", help="Restriction enzyme to calculate cutting frequency of. Can be a comma-"
+                                               "separated list of multiple enzymes.", metavar="ENZYME", action="store",
+                        type=str, default="DpnII")
+    parser.add_argument("-o", "--output-index", help="Create restriction site index files.", action="store_true")
+    parser.add_argument("-f", "--overwrite", help="Overwrite existing index files.", action="store_true")
+    parser.add_argument("-m", "--max-mismatch", help="Maximum number of mismatches in the cutting site.",
                         metavar="MISMATCHES", action="store", type=int, default=0)
     args = parser.parse_args()
 
-    for glob in args.input_fasta:
-        for fasta in iglob(glob):
-            site_freq = site_frequency(fasta, args.enzyme, args.max_mismatch)
+    file_list = [f for pattern in args.input_fasta for f in iglob(pattern)]
+    enzyme_list = args.enzyme.split(',')
+
+    for fasta in file_list:
+        for enzyme in enzyme_list:
+            site_freq = site_frequency(fasta, enzyme, args.max_mismatch)
 
             if not args.output_index:
                 continue
-            fname = "{:s}.{:s}".format(fasta, args.enzyme)
+            fname = "{:s}.{:s}".format(fasta, enzyme)
             export_site_index(fname, args.overwrite)
