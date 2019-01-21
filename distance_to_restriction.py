@@ -31,6 +31,7 @@ def get_closest_sites(sam_file, enzyme_index):
                 enzyme_pos = enzyme_index[read.reference_name][0]
 
             start_dst, start_idx = get_distance_to_site(read.reference_start, enzyme_pos, start_idx)
+            start_idx -= 1
             end_dst, end_idx = get_distance_to_site(read.reference_end, enzyme_pos, start_idx)
 
             print(read.qname, start_dst, end_dst, sep='\t')
