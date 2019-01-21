@@ -86,7 +86,7 @@ process extractChimeric {
 
 	script:
 """
-python3 "${params.script_dir}/extract_chimeric.py" "${alignment}" "${dataset}.bam"
+python3 "${params.script_dir}/extract_chimeric.py" -m 3 "${alignment}" "${dataset}.bam"
 
 samtools index "${dataset}.bam" "${dataset}.bam.bai"
 """

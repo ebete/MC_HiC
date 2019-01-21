@@ -8,7 +8,7 @@ from tempfile import NamedTemporaryFile
 import pysam
 
 
-def parse_cigar(sam_input, bam_output):
+def parse_chimeric(sam_input, bam_output, min_mappings):
     with NamedTemporaryFile("wb", buffering=0) as tmp:
         logging.info("Created temporary BAM file %s", tmp.name)
         with pysam.AlignmentFile(sam_input) as sam, \
@@ -26,7 +26,7 @@ def parse_cigar(sam_input, bam_output):
 
             logging.info("Writing chimeric reads to temporary BAM")
             for read_id, reads in grouped_reads.items():
-                if len(reads) <= 1:
+                if len(reads) < min_mappings:
                     continue
                 for x in reads:
                     fout.write(x)
@@ -44,9 +44,11 @@ if __name__ == "__main__":
     parser.add_argument("input_sam", help="Input SAM/BAM file.", metavar="SAM", action="store", nargs="?",
                         type=argparse.FileType("r"), default=sys.stdin)
     parser.add_argument("output_sam", help="Output BAM file.", metavar="SAM", action="store", type=str)
+    parser.add_argument("-m", "--min-mappings", metavar="N", help="Minimum number of mapping locations of a read.",
+                        action="store", type=int, default=1)
     args = parser.parse_args()
 
-    parse_cigar(args.input_sam, args.output_sam)
+    parse_chimeric(args.input_sam, args.output_sam, args.min_mappings)
     args.input_sam.close()
 
     logging.shutdown()
