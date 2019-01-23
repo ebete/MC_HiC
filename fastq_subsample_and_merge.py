@@ -28,7 +28,7 @@ def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme
         logging.info("Using restriction enzyme %s for digestion.", restriction_enzyme)
 
     for fastq_in in fastq_files:
-        # create a
+        # create a unique FASTQ identifier
         fname = os.path.basename(fastq_in).partition(".")[0]
         fname = re.sub("[\W]+", "_", fname)
 
@@ -55,14 +55,29 @@ def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme
                     # no fragmentation
                     fragments = [seq]
 
+                start_pos = 0
                 for digestion in fragments:
+                    fr_len = len(digestion)
+                    """
+                    FASTA header makeup:
+                    --------------------
+                    Fq.Id: Source FASTQ UID
+                    Rd.Id: Source read UID
+                    Rd.Ln: Length of the source read
+                    Fr.Id: Current fragment number of the read
+                    Fr.Ln: Length of the fragment (Fr.Ln == Fr.En - Fr.St)
+                    Fr.St: Zero-based start index of the fragment on the read (inclusive)
+                    Fr.En: Zero-based end index of the fragment on the read (exclusive)
+                    """
                     rec = SeqRecord(
                         digestion,
-                        id="Fq.Id:{:s};Rd.Id:{:d};Rd.Ln:{:d};Fr.Id:{:d};Fr.Ln:{:d}".format(
-                            fname, rec_idx, len(seq), fgmt_idx, len(digestion)),
+                        id="Fq.Id:{:s};Rd.Id:{:d};Rd.Ln:{:d};Fr.Id:{:d};Fr.Ln:{:d};Fr.St:{:d};Fr.En:{:d}".format(
+                            fname, rec_idx, len(seq), fgmt_idx, fr_len, start_pos, start_pos + fr_len),
                         name="",
                         description=""
                     )
+                    start_pos += fr_len
+
                     if min_length > 0 and len(digestion) < min_length:
                         logging.debug("Skipping %s; too short.", rec.id)
                         continue
