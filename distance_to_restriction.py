@@ -41,7 +41,11 @@ def get_distance_to_site(site_pos, enzyme_positions, start_idx=1):
     idx = start_idx
     while idx < len(enzyme_positions) and (site_pos - enzyme_positions[idx]) > 0:
         idx += 1
-    return min(abs(site_pos - enzyme_positions[idx]), site_pos - enzyme_positions[idx - 1]), idx
+
+    if abs(site_pos - enzyme_positions[idx]) < site_pos - enzyme_positions[idx - 1]:
+        return site_pos - enzyme_positions[idx], idx
+    else:
+        return site_pos - enzyme_positions[idx - 1], idx
 
 
 if __name__ == '__main__':
