@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
     # print(">>>{:s}".format(args.read_id))
 
-    print("strand;start;end")
+    print("ref;strand;start;end")
 
     seq = ""
     for fragment_id in sorted(aln.keys()):
@@ -129,8 +129,8 @@ if __name__ == '__main__':
             frag_start, frag_end = get_fragment_origin(x)
 
             # print(" "*start_idx + coverage)
-            print(2 if x.is_reverse else 1, start_idx + frag_start, start_idx + frag_end, sep=";")
-    print("3;0;{:d}".format(len(seq)))
+            print(x.reference_name, 2 if x.is_reverse else 1, start_idx + frag_start, start_idx + frag_end, sep=";")
+    print("read;3;0;{:d}".format(len(seq)))
 
     seq_fmt = re.sub(r"(GATC)", "\033[1;97;41m\\g<0>\033[0m", seq)
     seq_fmt = re.sub(r"(GAT[^C])|(GA[^T]C)|(G[^A]TC)|([^G]ATC)", "\033[0;97;106m\\g<0>\033[0m", seq_fmt)
