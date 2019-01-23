@@ -20,25 +20,30 @@ cigar_decoder = {
 
 
 def find_read_mappings(read_id, sam_file):
-    alignments = []
-    read_seq = ""
+    alignments = {}
     with pysam.AlignmentFile(sam_file, "r") as sam:
         for read in sam.fetch():
-            if read.flag & 0x4 != 0:
+            if read.is_unmapped:
                 logging.debug("Skipping %s (unaligned)", read.qname)
                 continue
+            # elif read.is_reverse:
+            #     logging.debug("Skipping %s (reverse-complement)", read.qname)
+            #     continue
 
-            read_metadata = {}
-            for x in str(read.qname).split(";"):
-                read_metadata[x.split(":")[0]] = x.split(":")[1]
+            read_metadata = read_header_to_dict(read.qname)
             rdid = "{}_{}".format(read_metadata["Fq.Id"], read_metadata["Rd.Id"])
             if rdid != read_id:
                 continue
 
-            alignments.append(read)
-            if read.flag & 0x800 == 0:
-                read_seq = read.seq
-    return alignments, read_seq
+            alignments.setdefault(int(read_metadata["Fr.Id"]), list()).append(read)
+    return alignments
+
+
+def read_header_to_dict(header):
+    read_metadata = {}
+    for x in str(header).split(";"):
+        read_metadata[x.split(":")[0]] = x.split(":")[1]
+    return read_metadata
 
 
 def mapping_to_read_coverage(read):
@@ -51,7 +56,7 @@ def mapping_to_read_coverage(read):
     for x in md_list:
         try:  # match
             matches = int(x)
-            md_string += "-" * matches
+            md_string += (">" if read.is_reverse else "<") * matches
             continue
         except ValueError:
             pass
@@ -76,6 +81,21 @@ def mapping_to_read_coverage(read):
     return cov
 
 
+def get_fragment_origin(read):
+    rlen = sum(map(lambda x: 0 if x[0] in (2, 3, 6) else x[1], read.cigar))
+    ori_start = 0
+    ori_end = rlen
+
+    match_type, match_length = read.cigar[0]
+    if match_type in (4, 5):
+        ori_start = match_length
+    match_type, match_length = read.cigar[-1]
+    if match_type in (4, 5):
+        ori_end = rlen - match_length
+
+    return ori_start, ori_end
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format="[%(asctime)s]: %(message)s")
 
@@ -86,12 +106,32 @@ if __name__ == '__main__':
     parser.add_argument("input_sam", help="SAM/BAM file.", metavar="SAM", action="store", type=str)
     args = parser.parse_args()
 
-    aln, seq = find_read_mappings(args.read_id, args.input_sam)
-    seq = re.sub(r"(GATC)", "\033[1;97;41m\\g<0>\033[0m", seq)
-    seq = re.sub(r"(GAT[^C])|(GA[^T]C)|(G[^A]TC)|([^G]ATC)", "\033[0;97;106m\\g<0>\033[0m", seq)
+    aln = find_read_mappings(args.read_id, args.input_sam)
 
-    print(">{}".format(args.read_id))
-    print(seq)
-    for x in aln:
-        coverage = mapping_to_read_coverage(x)
-        print(coverage)
+    # print(">>>{:s}".format(args.read_id))
+
+    print("strand;start;end")
+
+    seq = ""
+    for fragment_id in sorted(aln.keys()):
+        # print(">fragment_{:d} ({:d} aln)".format(fragment_id, len(aln[fragment_id])))
+
+        for x in aln[fragment_id]:
+            metadata = read_header_to_dict(x.qname)
+            start_idx = int(metadata["Fr.St"])
+            if not seq:
+                seq = "_" * int(metadata["Rd.Ln"])
+
+            if not x.is_supplementary:
+                seq = "".join([seq[:start_idx], x.seq, seq[start_idx + len(x.seq):]])
+
+            coverage = mapping_to_read_coverage(x)
+            frag_start, frag_end = get_fragment_origin(x)
+
+            # print(" "*start_idx + coverage)
+            print(2 if x.is_reverse else 1, start_idx + frag_start, start_idx + frag_end, sep=";")
+    print("3;0;{:d}".format(len(seq)))
+
+    seq_fmt = re.sub(r"(GATC)", "\033[1;97;41m\\g<0>\033[0m", seq)
+    seq_fmt = re.sub(r"(GAT[^C])|(GA[^T]C)|(G[^A]TC)|([^G]ATC)", "\033[0;97;106m\\g<0>\033[0m", seq_fmt)
+    # print(seq_fmt)
