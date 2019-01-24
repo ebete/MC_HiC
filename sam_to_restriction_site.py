@@ -4,17 +4,8 @@ import argparse
 import logging
 import pickle
 
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
-
-plt.style.use("ggplot")
-matplotlib.rcParams['figure.figsize'] = (16, 8)
-matplotlib.rcParams['figure.dpi'] = 80
-# matplotlib.rcParams["figure.autolayout"] = True
-sns.set()
 
 
 def load_site_index(fname):
@@ -75,8 +66,6 @@ if __name__ == '__main__':
     parser.add_argument("input_csv", help="Fragment mapping file.", metavar="CSV", action="store", type=str)
     parser.add_argument("output_csv", help="File to write the interaction matrix to.", metavar="CSV", action="store",
                         type=str)
-    # parser.add_argument("-b", "--bin-size", help="Size of the bins.", metavar="SIZE", action="store",
-    #                     type=int, default=500)
     parser.add_argument("-d", "--distance-cutoff", help="Maximum distance between a fragment and a restriction site.",
                         metavar="DISTANCE", action="store", type=int, default=20)
     args = parser.parse_args()
