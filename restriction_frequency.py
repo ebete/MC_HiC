@@ -32,13 +32,10 @@ def site_frequency(fasta_file, enzyme, max_mismatch):
     logging.info("Finding indices of %s (%s) in %s; allowing %d mismatches ...",
                  restriction_enzyme.site, enzyme, fasta_file, max_mismatch)
 
-    # slow or fast counting
-    count_method = get_exact_matches if max_mismatch == 0 else get_close_matches
-
     site_locations = {}
     with gzip.open(fasta_file, "rt") as handle:
         for record in SeqIO.parse(handle, "fasta"):
-            site_locations[record.id] = count_method(record.seq, restriction_enzyme.site, max_mismatch)
+            site_locations[record.id] = get_close_matches(record.seq, restriction_enzyme.site, max_mismatch)
 
             logging.debug("[%s] Scanned %d locations", record.id, len(record.seq))
             for k, v in site_locations[record.id].items():
@@ -66,6 +63,9 @@ def get_close_matches(seq, site, mismatch_cutoff=0):
     :return: A dictionary containing the number of matches for each number of
         mismatches
     """
+    if mismatch_cutoff == 0:  # much faster than the following approach
+        return {0: [m.start() for m in re.finditer("(?={:s})".format(site), str(seq), re.IGNORECASE)]}
+
     match_pos = {}
     # sliding window approach
     for i in range(0, len(seq) - len(site)):
@@ -81,10 +81,6 @@ def get_close_matches(seq, site, mismatch_cutoff=0):
             continue
         match_pos.setdefault(mismatches, []).append(i)
     return match_pos
-
-
-def get_exact_matches(seq, site, mismatch_cutoff=0):
-    return {0: [m.start() for m in re.finditer("(?={:s})".format(site), str(seq), re.IGNORECASE)]}
 
 
 def export_site_index(fname, overwrite=False):
