@@ -35,3 +35,19 @@ ggplot(map_len, aes(x = x, fill = "Mapped length")) +
   scale_y_continuous() +
   scale_color_brewer(palette = "Dark2") +
   theme_classic()
+
+# plot the distribution of read fragment coverage
+coverage_hq <- read.csv("/data0/thom/conservative_aln/LVR_HS5_NP-digested_chimeric_coverage.csv", sep = ";", header = T)
+coverage_lq <- read.csv("/data0/thom/conservative_aln/LVR_HS5_NP_lowQ_chimeric_coverage.csv", sep = ";", header = T)
+coverage <- rbind(
+data.frame(MAPQ = "1", coverage = coverage_lq$coverage),
+data.frame(MAPQ = "60", coverage = coverage_hq$coverage)
+)
+ggplot(coverage, aes(x = coverage, fill = MAPQ)) +
+#  geom_density() +
+  geom_histogram(binwidth = 0.01, alpha = 0.7, position = "identity") +
+  scale_x_continuous(labels = scales::percent) +
+  scale_y_continuous(expand = c(0, 0), labels = scales::scientific) +
+  scale_color_brewer(palette = "Dark2") +
+  theme_classic() +
+  xlab("Fraction of read fragments mapped")
