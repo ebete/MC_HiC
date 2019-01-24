@@ -38,8 +38,8 @@ def get_closest_sites(sam_file, enzyme_index):
 
 
 def get_distance_to_site(site_pos, enzyme_positions, start_idx=1):
-    idx = start_idx
-    while idx < len(enzyme_positions) and (site_pos - enzyme_positions[idx]) > 0:
+    idx = start_idx if start_idx > 1 else 1
+    while idx < len(enzyme_positions) - 1 and (site_pos - enzyme_positions[idx]) > 0:
         idx += 1
 
     if abs(site_pos - enzyme_positions[idx]) < site_pos - enzyme_positions[idx - 1]:
