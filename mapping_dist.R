@@ -85,4 +85,21 @@ cistrans_plot <- ggplot(trans_mappings, aes(x = MAPQ, fill = reference, color = 
   ylab("Fraction of mapped fragments")
 cistrans_plot
 
-ggarrange(cutsite_plot, maplen_plot, coverage_plot, cistrans_plot, ncol = 2, nrow = 2, labels = c("(1)", "(2)", "(3)", "(4)"))
+# normalised alignment score
+norm_aln <- read.delim("/data0/thom/conservative_aln/norm_aln.csv", header = T, sep = '\t')
+norm_aln$norm_aln_score <- (norm_aln$norm_aln_score - min(norm_aln$norm_aln_score)) / (max(norm_aln$norm_aln_score) - min(norm_aln$norm_aln_score))
+norm_aln$mapq <- factor(as.integer(norm_aln$mapq / 10) * 10, labels = c("0-9", "10-19", "20-29", "30-39", "40-49", "50-59", "60"))
+alnscore_plot <- ggplot(norm_aln, aes(x = norm_aln_score, fill = mapq)) +
+  geom_density(alpha = .3) +
+  scale_x_continuous() +
+  scale_y_continuous(expand = c(0, 0)) +
+  scale_fill_brewer(palette = "RdYlBu") +
+  scale_color_brewer(palette = "RdYlBu") +
+  theme_classic() +
+  ggtitle("Distribution of normalised alignment scores") +
+  xlab("Normalised alignment score") +
+  ylab("Density")
+alnscore_plot
+
+# combine all plots
+ggarrange(cutsite_plot, maplen_plot, coverage_plot, cistrans_plot, alnscore_plot, ncol = 2, nrow = 3, labels = c("(1)", "(2)", "(3)", "(4)", "(5)"))
