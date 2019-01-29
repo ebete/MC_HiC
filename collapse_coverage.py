@@ -5,7 +5,7 @@ import logging
 from statistics import median_low
 
 
-def collapse_depth(depth_file, max_gap, min_length):
+def collapse_depth(depth_file, max_gap, min_length, min_depth):
     with open(depth_file, "r") as depth:
         start_idx = -max_gap - 2  # force initialisation
         prev_idx = 0
@@ -18,9 +18,9 @@ def collapse_depth(depth_file, max_gap, min_length):
             cur_idx = int(line[1])
             cur_depth = int(line[2])
             if prev_chr != cur_chr or prev_idx + max_gap + 1 < cur_idx:
-                # positions too distant
-                if start_idx >= 0 and prev_idx - start_idx >= min_length:
-                    med_depth = median_low(depths)
+                # positions too distant, make a break
+                med_depth = median_low(depths)
+                if start_idx >= 0 and prev_idx - start_idx >= min_length and med_depth >= min_depth:
                     print("{:s}:{:d}-{:d}".format(prev_chr, start_idx, prev_idx),
                           "{:.0f}".format(med_depth), sep="\t")
                 start_idx = cur_idx
@@ -43,6 +43,8 @@ if __name__ == "__main__":
                         metavar="LENGTH", action="store", type=int, default=1)
     parser.add_argument("-l", "--min-length", help="Minimum length of a region.", metavar="LENGTH", action="store",
                         type=int, default=1)
+    parser.add_argument("-c", "--min-coverage", help="Minimum median coverage of a region.", metavar="COVERAGE",
+                        action="store", type=int, default=1)
     args = parser.parse_args()
 
-    collapse_depth(args.input_depth, args.max_distance, args.min_length)
+    collapse_depth(args.input_depth, args.max_distance, args.min_length, args.min_coverage)
