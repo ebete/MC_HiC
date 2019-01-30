@@ -12,7 +12,8 @@ suppressPackageStartupMessages({
 aln_coords <- read.csv("/data0/thom/conservative_aln/aln_coords.csv", sep = ";", header = T)
 plot.new(); plot.window(ylim = c(1, nrow(aln_coords) + 1), xlim = c(min(aln_coords$start) - 1, max(aln_coords$end) + 1))
 for (i in 1 : nrow(aln_coords)) {
-  segments(aln_coords[i,]$start, i, aln_coords[i,]$end, i, col = aln_coords[i,]$ref, lty = aln_coords[i,]$strand + 1, lwd = 2)
+  line_col <- hsv(h = if (aln_coords[i,]$ref == "chr7")2 / 3 else 1, s = min(aln_coords[i,]$mapq / 20, 1), v = 1, alpha = 1)
+  segments(aln_coords[i,]$start, i, aln_coords[i,]$end, i, col = line_col, lty = 1, lwd = max(aln_coords[i,]$mapq / 10, 1))
 }
 
 # plot the distribution of the distance to DpnII sites
