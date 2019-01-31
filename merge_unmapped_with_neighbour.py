@@ -92,16 +92,18 @@ def do_merge(fasta_records, mapped_fragments):
             continue
 
         jump_region = list(range(mapped_fragments[idx - 1], fragment + 1))
-        merged_fragments = list()
         for i in range(len(jump_region) - 2):
-            merged_fragments.append(jump_region[:i + 2])
-            merged_fragments.append(jump_region[i + 1:])
-
-        for merge_region in merged_fragments:
-            new_seq = Seq.Seq("".join([str(fasta_records[x].seq) for x in merge_region]),
-                              alphabet=IUPAC.unambiguous_dna)
-            new_seqs.append(SeqRecord.SeqRecord(
-                new_seq, id="Fr.Src:{:s}".format(",".join([str(x) for x in merge_region])), description="", name=""
+            new_seqs.append(SeqRecord.SeqRecord(  # Extend from left
+                Seq.Seq("".join([str(fasta_records[x].seq) for x in jump_region[:i + 2]]),
+                        alphabet=IUPAC.unambiguous_dna),
+                id="Src.Fr:{:s};Src.Ori:Left".format(",".join([str(x) for x in jump_region[:i + 2]])),
+                description="", name=""
+            ))
+            new_seqs.append(SeqRecord.SeqRecord(  # Extend from right
+                Seq.Seq("".join([str(fasta_records[x].seq) for x in jump_region[i + 1:]]),
+                        alphabet=IUPAC.unambiguous_dna),
+                id="Src.Fr:{:s};Src.Ori:Right".format(",".join([str(x) for x in jump_region[i + 1:]])),
+                description="", name=""
             ))
     return new_seqs
 
