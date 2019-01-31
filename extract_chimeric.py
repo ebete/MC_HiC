@@ -16,7 +16,7 @@ def parse_chimeric(sam_input, bam_output, min_mappings):
             grouped_reads = {}
 
             logging.info("Reading SAM file ...")
-            for read in sam.fetch():
+            for read in sam:
                 # fragment id (Fr.Id) should be ignored
                 read_metadata = {}
                 for x in str(read.qname).split(";"):
