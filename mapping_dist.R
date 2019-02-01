@@ -104,3 +104,30 @@ alnscore_plot
 
 # combine all plots
 ggarrange(cutsite_plot, maplen_plot, coverage_plot, cistrans_plot, alnscore_plot, ncol = 2, nrow = 3, labels = c("(1)", "(2)", "(3)", "(4)", "(5)"))
+
+# plot the length distribution of the two mapping approaches
+maplen_comparison <- read.delim("/data0/thom/mc4c_fa_from_merging/maplen_comparison.csv", header = T, stringsAsFactors = F)
+maplen_diff <- maplen_comparison$mergemap_length - maplen_comparison$orginal_length
+maplen.melt <- melt(maplen_comparison[, c(2, 4)], measure.vars = c("orginal_length", "mergemap_length"))
+maplen_plot <- ggplot(maplen.melt, aes(x = value, fill = variable)) +
+  geom_histogram(alpha = .5, binwidth = 10, position = "identity", aes(y = ..count.. / sum(..count..))) +
+  scale_x_continuous(limits = c(NA, 1500)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  scale_fill_brewer(palette = "Dark2") +
+  theme_classic() +
+  geom_vline(xintercept = mean(maplen_comparison$orginal_length), color = "blue", linetype = "dashed") +
+  geom_vline(xintercept = mean(maplen_comparison$mergemap_length), color = "darkred", linetype = "dashed") +
+  annotate("text", x = mean(maplen_comparison$orginal_length), y = 0.03, label = sprintf("mean: %.0f", mean(maplen_comparison$orginal_length)), colour = "blue", vjust = - 1, hjust = 0.5, angle = 270) +
+  annotate("text", x = mean(maplen_comparison$mergemap_length), y = 0.03, label = sprintf("mean: %.0f", mean(maplen_comparison$mergemap_length)), colour = "darkred", vjust = - 1, hjust = 0.5, angle = 270)
+maplen_plot
+
+mapdiff_plot <- ggplot(maplen_comparison, aes(x = diff, fill = "Length difference")) +
+  geom_histogram(binwidth = 30) +
+  scale_x_continuous(limits = c(- 1500, 1500)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  scale_fill_brewer(palette = "Dark2") +
+  theme_classic() +
+  geom_vline(xintercept = 0, color = "black", linetype = "dotted") +
+  geom_vline(xintercept = mean(maplen_comparison$diff), color = "darkgreen") +
+  annotate("text", x = mean(maplen_comparison$diff), y = 4500, label = sprintf("mean: %.0f", mean(maplen_comparison$diff)), colour = "darkgreen", vjust = - 1, hjust = 0.5, angle = 270)
+mapdiff_plot
