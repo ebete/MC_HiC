@@ -78,6 +78,7 @@ def combine_unmapped_and_mapped(fasta_file, mapped_fragments):
 
 def do_merge(fasta_records, mapped_fragments):
     new_seqs = list()
+    add_length_cutoff = 50
 
     mapped_count = len(mapped_fragments)
     if mapped_count < 2:  # no in-between unmapped fragments exist
@@ -92,19 +93,26 @@ def do_merge(fasta_records, mapped_fragments):
             continue
 
         jump_region = list(range(mapped_fragments[idx - 1], fragment + 1))
-        for i in range(len(jump_region) - 2):
-            new_seqs.append(SeqRecord.SeqRecord(  # Extend from left
-                Seq.Seq("".join([str(fasta_records[x].seq) for x in jump_region[:i + 2]]),
+        for i in range(2, len(jump_region)):  # Extend from left
+            new_seqs.append(SeqRecord.SeqRecord(
+                Seq.Seq("".join([str(fasta_records[x].seq) for x in jump_region[:i]]),
                         alphabet=IUPAC.unambiguous_dna),
-                id="Src.Fr:{:s};Src.Ori:Left".format(",".join([str(x) for x in jump_region[:i + 2]])),
+                id="Src.Fr:{:s};Src.Ori:Left".format(",".join([str(x) for x in jump_region[:i]])),
                 description="", name=""
             ))
-            new_seqs.append(SeqRecord.SeqRecord(  # Extend from right
-                Seq.Seq("".join([str(fasta_records[x].seq) for x in jump_region[i + 1:]]),
+            if sum([len(fasta_records[x]) for x in jump_region[1:i]]) > add_length_cutoff:
+                break
+
+        for i in range(len(jump_region) - 2, 0, -1):  # Extend from right
+            new_seqs.append(SeqRecord.SeqRecord(
+                Seq.Seq("".join([str(fasta_records[x].seq) for x in jump_region[i:]]),
                         alphabet=IUPAC.unambiguous_dna),
-                id="Src.Fr:{:s};Src.Ori:Right".format(",".join([str(x) for x in jump_region[i + 1:]])),
+                id="Src.Fr:{:s};Src.Ori:Right".format(",".join([str(x) for x in jump_region[i:]])),
                 description="", name=""
             ))
+            if sum([len(fasta_records[x]) for x in jump_region[i:-1]]) > add_length_cutoff:
+                break
+
     return new_seqs
 
 

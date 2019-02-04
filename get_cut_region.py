@@ -31,7 +31,8 @@ def get_cut_region(reference_genome, fwd_primer, rev_primer, restriction_enzyme)
                                           chromosome.id, rev_restriction_pos, fwd_restriction_pos),
                                       description="", name="")
             print(soi.format("fasta"), end="")
-            break
+            return
+    logging.error("Chromosome %s does not exist in reference.", reference_genome)
 
 
 def make_locus(position_string):

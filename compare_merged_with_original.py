@@ -28,7 +28,7 @@ def compare_merged_to_original(original_sam, mergemap_sam):
 
             print(original_metadata[ori_fragment]["qname"], original_metadata[ori_fragment]["unclipped_len"],
                   metadata["qname"], metadata["unclipped_len"], sep="\t")
-        break
+        break  # TODO: remove
 
 
 def get_mapping_metadata(sam_input):
