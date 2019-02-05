@@ -76,9 +76,30 @@ def combine_unmapped_and_mapped(fasta_file, mapped_fragments):
                  unmapped_reads / total_reads * 100)
 
 
-def do_merge(fasta_records, mapped_fragments):
+def do_merge(fasta_records, mapped_fragments, add_length_cutoff=50):
+    """
+    When an unmapped region exists betweeen two mapped fragments, generate new
+    fragments by extending both mapped fragments into the unmapped region. The
+    extension will stop when it reaches the other mapped fragment or when the
+    length threshold is exceeded. Only the longest fragments are returned from
+    both extensions.
+
+    :type fasta_records: list
+    :param fasta_records: A list containing all the SeqRecords generated from a
+        single read.
+
+    :type mapped_fragments: list
+    :param mapped_fragments: A list containing the Fr.Ids of the mapped
+        fragments.
+
+    :type add_length_cutoff: int
+    :param add_length_cutoff: When the fragment is extended by more than this
+        value, stop extending.
+
+    :rtype list
+    :return: A list containing the new SeqRecords.
+    """
     new_seqs = list()
-    add_length_cutoff = 50
 
     mapped_count = len(mapped_fragments)
     if mapped_count < 2:  # no in-between unmapped fragments exist
@@ -93,25 +114,40 @@ def do_merge(fasta_records, mapped_fragments):
             continue
 
         jump_region = list(range(mapped_fragments[idx - 1], fragment + 1))
-        for i in range(2, len(jump_region)):  # Extend from left
-            new_seqs.append(SeqRecord.SeqRecord(
-                Seq.Seq("".join([str(fasta_records[x].seq) for x in jump_region[:i]]),
-                        alphabet=IUPAC.unambiguous_dna),
+
+        # extend from left
+        left_extend = None
+        left_orig_len = len(fasta_records[jump_region[0]])
+        for i in range(2, len(jump_region)):
+            seq = Seq.Seq("".join([str(fasta_records[x].seq) for x in jump_region[:i]]), alphabet=IUPAC.unambiguous_dna)
+            left_extend = SeqRecord.SeqRecord(
+                seq[:left_orig_len + add_length_cutoff],
                 id="Src.Fr:{:s};Src.Ori:Left".format(",".join([str(x) for x in jump_region[:i]])),
                 description="", name=""
-            ))
-            if sum([len(fasta_records[x]) for x in jump_region[1:i]]) > add_length_cutoff:
-                break
+            )
+            appended_length = len(left_extend) - left_orig_len
+            left_extend.id = "{:s};Src.Ln:{:d}".format(left_extend.id, appended_length)
 
-        for i in range(len(jump_region) - 2, 0, -1):  # Extend from right
-            new_seqs.append(SeqRecord.SeqRecord(
-                Seq.Seq("".join([str(fasta_records[x].seq) for x in jump_region[i:]]),
-                        alphabet=IUPAC.unambiguous_dna),
+            if appended_length >= add_length_cutoff:
+                break
+        new_seqs.append(left_extend)
+
+        # extend from right
+        right_extend = None
+        right_orig_len = len(fasta_records[jump_region[-1]])
+        for i in range(len(jump_region) - 2, 0, -1):
+            seq = Seq.Seq("".join([str(fasta_records[x].seq) for x in jump_region[i:]]), alphabet=IUPAC.unambiguous_dna)
+            right_extend = SeqRecord.SeqRecord(
+                seq[-(right_orig_len + add_length_cutoff):],
                 id="Src.Fr:{:s};Src.Ori:Right".format(",".join([str(x) for x in jump_region[i:]])),
                 description="", name=""
-            ))
-            if sum([len(fasta_records[x]) for x in jump_region[i:-1]]) > add_length_cutoff:
+            )
+            appended_length = len(right_extend) - right_orig_len
+            right_extend.id = "{:s};Src.Ln:{:d}".format(right_extend.id, appended_length)
+
+            if appended_length >= add_length_cutoff:
                 break
+        new_seqs.append(right_extend)
 
     return new_seqs
 

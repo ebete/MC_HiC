@@ -7,11 +7,22 @@ import pysam
 
 
 def compare_merged_to_original(original_sam, mergemap_sam):
+    min_mapq_increase = 5
+    min_appended_length = 10
+
     original_metadata_dict = get_mapping_metadata(original_sam)
     mergemap_metadata_dict = get_mapping_metadata(mergemap_sam)
 
     logging.info("Comparing original alignments to mergemapped alignments ...")
-    print("original_qname", "original_length", "mergemap_qname", "mergemap_length", sep="\t")
+    print("original_qname",  # ID of the original fragment
+          "original_length",  # unclipped length of the original fragment
+          "original_mapq",  # MAPQ of the original fragment
+          "mergemap_qname",  # ID of the MergeMap fragment
+          "mergemap_length",  # unclipped length of the MergeMap fragment
+          "mergemap_mapq",  # MAPQ of the MergeMap fragment
+          "effective_appended",  # effective length added (appended fragment - clipping)
+          sep="\t")
+
     for read_id, mergemap_fragments in mergemap_metadata_dict.items():
         original_metadata = original_metadata_dict.get(read_id, dict())
         if not original_metadata:
@@ -26,9 +37,23 @@ def compare_merged_to_original(original_sam, mergemap_sam):
                                 "Is this the correct SAM file pair?", ori_fragment, read_id)
                 continue
 
-            print(original_metadata[ori_fragment]["qname"], original_metadata[ori_fragment]["unclipped_len"],
-                  metadata["qname"], metadata["unclipped_len"], sep="\t")
-        break  # TODO: remove
+            # calculate effective appended length (part of appended fragment that is actually mapped)
+            appended_maplen = int(metadata["Src.Ln"]) - metadata["clipping"][
+                "clip_start" if metadata["Src.Ori"] == "Right" else "clip_end"]
+            mapq_increase = metadata["mapq"] - original_metadata[ori_fragment]["mapq"]
+            if appended_maplen < 0 or (mapq_increase < min_mapq_increase and appended_maplen < min_appended_length):
+                logging.debug("Skipping fragment %d of read %s (MAPQ increase/appended length insufficient).",
+                              ori_fragment, read_id)
+                continue
+
+            print(original_metadata[ori_fragment]["qname"],
+                  original_metadata[ori_fragment]["clipping"]["unclipped_length"],
+                  original_metadata[ori_fragment]["mapq"],
+                  metadata["qname"],
+                  metadata["clipping"]["unclipped_length"],
+                  metadata["mapq"],
+                  appended_maplen,
+                  sep="\t")
 
 
 def get_mapping_metadata(sam_input):
@@ -41,8 +66,9 @@ def get_mapping_metadata(sam_input):
                 continue
 
             metadata = read_header_to_dict(read.qname)
-            metadata["unclipped_len"] = unclipped_length(read.cigar)
+            metadata["clipping"] = unclipped_length(read.cigar)
             metadata["qname"] = read.qname
+            metadata["mapq"] = read.mapq
 
             rdid = "{}_{}".format(metadata["Fq.Id"], metadata["Rd.Id"])
 
@@ -69,11 +95,13 @@ def read_header_to_dict(header):
 
 def unclipped_length(cigar_tuple):
     unclipped = 0
+    start_clipping = cigar_tuple[0][1] if cigar_tuple[0][0] in {4, 5} else 0
+    end_clipping = cigar_tuple[-1][1] if cigar_tuple[-1][0] in {4, 5} else 0
     for operation, length in cigar_tuple:
         if operation in {4, 5}:  # skip clipped
             continue
         unclipped += length
-    return unclipped
+    return {"unclipped_length": unclipped, "clip_start": start_clipping, "clip_end": end_clipping}
 
 
 if __name__ == "__main__":
