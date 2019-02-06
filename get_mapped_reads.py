@@ -37,12 +37,17 @@ def make_read_id(metadata):
 
 def extract_mapped_read_records(fasta_file, read_ids):
     logging.info("Getting FASTA records that have mapped fragments ...")
+    mappable = 0
+    records = 0
     with gzip.open(fasta_file, "rt") as handle:
         for record in SeqIO.parse(handle, "fasta"):
+            records += 1
             metadata = read_header_to_dict(record.id)
             if make_read_id(metadata) not in read_ids:
                 continue
+            mappable += 1
             print(record.format("fasta"), end="")
+    logging.info("%d records extracted from %d total (%.1f%%).", mappable, records, mappable / records * 100)
 
 
 if __name__ == '__main__':
