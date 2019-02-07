@@ -45,10 +45,11 @@ def read_header_to_dict(header):
 def combine_unmapped_and_mapped(fasta_file, mapped_fragments):
     logging.info("Parsing fragments from %s and comparing to mapped ...", fasta_file)
     total_reads = 0
-    unmapped_reads = 0
+    unmapped_reads = -1  # initialisation will set it to zero
     with gzip.open(fasta_file, "rt") as handle:
         read_records = list()
         last_id = ""
+        last_metadata = dict()
         for record in SeqIO.parse(handle, "fasta", IUPAC.unambiguous_dna):
             record_metadata = read_header_to_dict(record.id)
             fasta_id = "{}_{}".format(record_metadata["Fq.Id"], record_metadata["Rd.Id"])
@@ -63,7 +64,7 @@ def combine_unmapped_and_mapped(fasta_file, mapped_fragments):
                 fragment_id = 0
                 for new_record in do_merge(read_records, mapped_fragments[last_id]):
                     new_record.id = "Fq.Id:{:s};Rd.Id:{:s};Rd.Ln:{:s};Fr.Id:{:d};Fr.Ln:{:d};{:s}".format(
-                        record_metadata["Fq.Id"], record_metadata["Rd.Id"], record_metadata["Rd.Ln"], fragment_id,
+                        last_metadata["Fq.Id"], last_metadata["Rd.Id"], last_metadata["Rd.Ln"], fragment_id,
                         len(new_record.seq), new_record.id)
                     print(new_record.format("fasta"), end="")
                     fragment_id += 1
@@ -71,6 +72,7 @@ def combine_unmapped_and_mapped(fasta_file, mapped_fragments):
                 unmapped_reads += 1
 
             last_id = fasta_id
+            last_metadata = record_metadata
             read_records = [record]
     logging.info("Out of %d reads, %d had no mapped fragments (%.1f%%).", total_reads, unmapped_reads,
                  unmapped_reads / total_reads * 100)
