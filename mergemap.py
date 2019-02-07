@@ -124,7 +124,7 @@ def do_merge(fasta_records, mapped_fragments, add_length_cutoff=50):
             seq = Seq.Seq("".join([str(fasta_records[x].seq) for x in jump_region[:i]]), alphabet=IUPAC.unambiguous_dna)
             left_extend = SeqRecord.SeqRecord(
                 seq[:left_orig_len + add_length_cutoff],
-                id="Src.Fr:{:s};Src.Ori:Left".format(",".join([str(x) for x in jump_region[:i]])),
+                id="Src.Op:MergeMap;Src.Fr:{:s};Src.Ori:Left".format(",".join([str(x) for x in jump_region[:i]])),
                 description="", name=""
             )
             appended_length = len(left_extend) - left_orig_len
@@ -141,7 +141,7 @@ def do_merge(fasta_records, mapped_fragments, add_length_cutoff=50):
             seq = Seq.Seq("".join([str(fasta_records[x].seq) for x in jump_region[i:]]), alphabet=IUPAC.unambiguous_dna)
             right_extend = SeqRecord.SeqRecord(
                 seq[-(right_orig_len + add_length_cutoff):],
-                id="Src.Fr:{:s};Src.Ori:Right".format(",".join([str(x) for x in jump_region[i:]])),
+                id="Src.Op:MergeMap;Src.Fr:{:s};Src.Ori:Right".format(",".join([str(x) for x in jump_region[i:]])),
                 description="", name=""
             )
             appended_length = len(right_extend) - right_orig_len
