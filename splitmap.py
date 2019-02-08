@@ -67,7 +67,7 @@ def make_read_id(metadata):
     return "{}_{}".format(metadata["Fq.Id"], metadata["Rd.Id"])
 
 
-def combine_unmapped_and_mapped(fasta_file, mapped_fragments):
+def combine_unmapped_and_mapped(fasta_file, mapped_fragments, max_fragment_slice_length):
     logging.info("Parsing fragments from %s and comparing to mapped ...", fasta_file)
     total_reads = 0
     unmapped_reads = -1  # initialisation will set it to zero
@@ -86,7 +86,8 @@ def combine_unmapped_and_mapped(fasta_file, mapped_fragments):
             total_reads += 1
             if last_id in mapped_fragments:
                 fragment_id = 0
-                for new_record in do_split(read_records, mapped_fragments[last_id], add_length_cutoff=50):
+                for new_record in do_split(read_records, mapped_fragments[last_id],
+                                           add_length_cutoff=max_fragment_slice_length):
                     new_record.id = "Fq.Id:{:s};Rd.Id:{:s};Rd.Ln:{:s};Fr.Id:{:d};Fr.Ln:{:d};{:s}".format(
                         last_metadata["Fq.Id"], last_metadata["Rd.Id"], last_metadata["Rd.Ln"], fragment_id,
                         len(new_record.seq), new_record.id)
@@ -173,9 +174,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input_sam", help="Input SAM/BAM file.", metavar="SAM", action="store", type=str)
     parser.add_argument("input_fasta", help="Input FASTA file.", metavar="FASTA", action="store", type=str)
+    parser.add_argument("-m", "--max-slice-len", help="Maximum size of the part taken from a fragment.", metavar="N",
+                        action="store", type=int, default=-1)
     args = parser.parse_args()
 
     mapped_fragments = get_mapped_fragments(args.input_sam)
-    combine_unmapped_and_mapped(args.input_fasta, mapped_fragments)
+    combine_unmapped_and_mapped(args.input_fasta, mapped_fragments, args.max_slice_len)
 
     logging.shutdown()
