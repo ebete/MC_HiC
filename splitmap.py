@@ -150,7 +150,7 @@ def do_split(fasta_records, mapped_fragments, add_length_cutoff=-1):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(message)s")
+    utils.init_logger()
 
     # get command-line arguments
     parser = argparse.ArgumentParser()

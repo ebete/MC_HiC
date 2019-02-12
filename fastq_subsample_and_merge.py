@@ -5,11 +5,12 @@ import gzip
 import logging
 import os
 import re
-from glob import iglob
 
 from Bio import Seq, SeqIO, Restriction
 from Bio.Alphabet import IUPAC
 from Bio.SeqRecord import SeqRecord
+
+import utils
 
 
 def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme="DpnII", fragment_length=-1,
@@ -95,7 +96,7 @@ def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s]: %(message)s")
+    utils.init_logger()
 
     # Get command argument
     parser = argparse.ArgumentParser()
@@ -120,11 +121,6 @@ if __name__ == '__main__':
                         type=int, default=-1)
     args = parser.parse_args()
 
-    input_files = []
-    for glob in args.input_fq:
-        for fastq in iglob(glob):
-            input_files.append(fastq)
-
     with gzip.open(args.output_fa, "wt") as fout:
-        subsample_fastq(input_files, fout, args.sample, args.enzyme, args.fragment_length, args.fragment_interval,
-                        args.min, args.max)
+        subsample_fastq(utils.glob_all_files(args.input_fq), fout, args.sample, args.enzyme, args.fragment_length,
+                        args.fragment_interval, args.min, args.max)

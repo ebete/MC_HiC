@@ -150,5 +150,15 @@ def glob_all_files(glob_files):
     return [f for pattern in glob_files for f in iglob(pattern)]
 
 
+def init_logger(log_level=logging.INFO):
+    """
+    Initialise the logger.
+
+    :type log_level: int
+    :param log_level: Set the minimum logging level.
+    """
+    logging.basicConfig(level=log_level, format="[%(asctime)s] %(message)s")
+
+
 if __name__ == '__main__':
     print("This is not a runnable script.", file=sys.stderr)

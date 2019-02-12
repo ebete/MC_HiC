@@ -19,10 +19,11 @@ def compare_original_to_splitmap(original_sam, splitmap_sam):
     for read_id, orig_fragments in original_metadata_dict.items():
         first_fragments = set(orig_fragments.keys())
         if read_id not in splitmap_metadata_dict:
-            # for fragment_id, orig_metadata in orig_fragments.items():
-            # print(orig_metadata["position"]["chr"], orig_metadata["position"]["start"],
-            #       orig_metadata["position"]["end"], read_id, "original", sep="\t")
-            # print(fmt_set(first_fragments), "", "", sep="\t")
+            for fragment_id, orig_metadata in orig_fragments.items():
+                # print(orig_metadata["position"]["chr"], orig_metadata["position"]["start"],
+                #       orig_metadata["position"]["end"], read_id, "original", sep="\t")
+                # print(fmt_set(first_fragments), "", "", sep="\t")
+                print(read_id, fragment_id, "set1", sep="\t")
             continue
 
         splitmap_fragments = splitmap_metadata_dict[read_id]
@@ -78,7 +79,7 @@ def equal_positions(first_pos, second_pos, max_dist=0):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(message)s")
+    utils.init_logger()
 
     # get command-line arguments
     parser = argparse.ArgumentParser()
