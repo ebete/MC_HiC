@@ -36,7 +36,7 @@ def get_mapping_metadata(sam_input, ignore_ummapped=True, ignore_secondary=True)
 
     * Src.Op: Operation that was executed to generate this fragment
     * Src.Fr: Comma-seperated list of Fr.Ids that were used to create this fragment
-    * Src.Ln: Number of bases appended by the Src.Op operation
+    * Src.Ln: Number of bases appended to the mapped part by the Src.Op operation
 
     The following keys are always added:
 

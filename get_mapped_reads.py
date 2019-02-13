@@ -7,6 +7,8 @@ import logging
 import pysam
 from Bio import SeqIO
 
+import utils
+
 
 def get_mapped_reads(samfile):
     read_ids = list()
@@ -18,21 +20,10 @@ def get_mapped_reads(samfile):
                 logging.debug("Skipping %s (unaligned)", read.qname)
                 continue
 
-            metadata = read_header_to_dict(read.qname)
-            read_ids.append(make_read_id(metadata))
+            metadata = utils.read_header_to_dict(read.qname)
+            read_ids.append(utils.make_read_id(metadata))
 
     return set(read_ids)
-
-
-def read_header_to_dict(header):
-    read_metadata = dict()
-    for x in str(header).split(";"):
-        read_metadata[x.split(":")[0]] = x.split(":")[1]
-    return read_metadata
-
-
-def make_read_id(metadata):
-    return "{}_{}".format(metadata["Fq.Id"], metadata["Rd.Id"])
 
 
 def extract_mapped_read_records(fasta_file, read_ids):
@@ -42,8 +33,8 @@ def extract_mapped_read_records(fasta_file, read_ids):
     with gzip.open(fasta_file, "rt") as handle:
         for record in SeqIO.parse(handle, "fasta"):
             records += 1
-            metadata = read_header_to_dict(record.id)
-            if make_read_id(metadata) not in read_ids:
+            metadata = utils.read_header_to_dict(record.id)
+            if utils.make_read_id(metadata) not in read_ids:
                 continue
             mappable += 1
             print(record.format("fasta"), end="")
@@ -51,7 +42,7 @@ def extract_mapped_read_records(fasta_file, read_ids):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s]: %(message)s")
+    utils.init_logger()
 
     # get command line arguments
     parser = argparse.ArgumentParser()

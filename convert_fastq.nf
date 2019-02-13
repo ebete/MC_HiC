@@ -56,7 +56,7 @@ process createNonSplit {
 	file "${dataset}.fa.gz"
 	
 	script:
-	"""python3 "${params.script_dir}/fastq_subsample_and_merge.py" ${params.optional_args} "${dataset}.fa.gz" "${fq_file}" """
+	"""python3 "${params.script_dir}/fastq_subsample_and_merge.py" "${dataset}.fa.gz" "${fq_file}" """
 }
 
 process createDigested {
