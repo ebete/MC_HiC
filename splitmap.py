@@ -4,49 +4,10 @@ import argparse
 import gzip
 import logging
 
-import pysam
 from Bio import SeqIO, SeqRecord
 from Bio.Alphabet import IUPAC
 
 import utils
-
-
-def get_mapped_fragments(sam_input):
-    """
-    Generate a dictionary containing the metadata of the mapped read fragments
-    from a SAM file. Only the primary alignment is considered.
-
-    The dictionary is structured as follows:
-
-    {
-      read_id: {
-        fragment_id: {
-          metadata_key: metadata_value
-        }
-      }
-    }
-
-    :type sam_input str
-    :param sam_input: The SAM file to parse all the mapped fragments from.
-
-    :rtype dict
-    :return: A dictionary containing mapped reads metadata.
-    """
-    alignments = dict()
-
-    logging.info("Reading SAM file %s ...", sam_input)
-    with pysam.AlignmentFile(sam_input, "r") as sam:
-        for read in sam:
-            if read.is_unmapped or read.is_secondary:
-                continue
-
-            metadata = utils.read_header_to_dict(read.qname)
-            metadata["cigar"] = read.cigar
-            frid = int(metadata["Fr.Id"])
-
-            alignments.setdefault(utils.make_read_id(metadata), dict())[frid] = metadata
-
-    return alignments
 
 
 def combine_unmapped_and_mapped(fasta_file, mapped_fragments, max_fragment_slice_length):
@@ -111,38 +72,38 @@ def do_split(fasta_records, mapped_fragments, add_length_cutoff=-1):
 
     mapped_frid = set(mapped_fragments.keys())
     total_fragments = len(fasta_records)
-    for idx in range(2, total_fragments - 1):  # skip first two and last
-        if idx - 1 in mapped_frid and idx in mapped_frid:  # run clipped merge
-            prev_fragment = mapped_fragments[idx - 1]
-            cur_fragment = mapped_fragments[idx]
+    for idx in range(2, total_fragments - 1):  # skip first two and last fragment
+        prev_part = fasta_records[idx - 1].seq[-add_length_cutoff:] if add_length_cutoff > 0 else fasta_records[
+            idx - 1].seq
+        cur_part = fasta_records[idx].seq[:add_length_cutoff] if add_length_cutoff > 0 else fasta_records[idx].seq
+        operation = ""
+        new_seq = None
+        unmapped_added = -1
 
-            prev_clipped = prev_fragment["cigar"][-1][1] if prev_fragment["cigar"][-1][0] in {4, 5} else 0
-            cur_clipped = cur_fragment["cigar"][0][1] if cur_fragment["cigar"][0][0] in {4, 5} else 0
-            if prev_clipped < 20 or cur_clipped < 20:  # clipped sequences too short
-                continue
-
-            # restrict maximum cut size
-            prev_clipped = min(add_length_cutoff, prev_clipped) if add_length_cutoff > 0 else prev_clipped
-            cur_clipped = min(add_length_cutoff, cur_clipped) if add_length_cutoff > 0 else cur_clipped
-
-            # create new fragment by merging clipped parts
-            new_seqs.append(SeqRecord.SeqRecord(
-                seq=fasta_records[idx - 1].seq[-prev_clipped:] + fasta_records[idx].seq[:cur_clipped],
-                id="Src.Op:MergeClipped;Src.Fr:{:d},{:d}".format(idx - 1, idx),
-                description="", name=""
-            ))
-            continue
-
-        # a fragment was not mapped: make small fragment from ends
-        seq = None
-        if add_length_cutoff > 0:
-            seq = fasta_records[idx - 1].seq[-add_length_cutoff:] + fasta_records[idx].seq[:add_length_cutoff]
+        if idx - 1 in mapped_frid and idx in mapped_frid:
+            # both fragments are mapped
+            operation = "BothMapped"
+            new_seq = prev_part + cur_part
+            unmapped_added = 0
+        elif idx - 1 in mapped_frid:
+            # only previous fragment mapped
+            operation = "LeftMapped"
+            new_seq = fasta_records[idx - 1].seq + cur_part
+            unmapped_added = len(cur_part)
+        elif idx in mapped_frid:
+            # only current fragment mapped
+            operation = "RightMapped"
+            new_seq = prev_part + fasta_records[idx].seq
+            unmapped_added = len(prev_part)
         else:
-            seq = fasta_records[idx - 1].seq + fasta_records[idx].seq
+            # both unmapped
+            operation = "BothUnmapped"
+            new_seq = fasta_records[idx - 1].seq + fasta_records[idx].seq
+            unmapped_added = len(new_seq)
 
         new_seqs.append(SeqRecord.SeqRecord(
-            seq=seq,
-            id="Src.Op:MergeEnds;Src.Fr:{:d},{:d}".format(idx - 1, idx),
+            seq=new_seq,
+            id="Src.Op:{:s};Src.Fr:{:d},{:d};Src.Ln:{:d}".format(operation, idx - 1, idx, unmapped_added),
             description="", name=""
         ))
 
@@ -160,7 +121,7 @@ if __name__ == "__main__":
                         action="store", type=int, default=-1)
     args = parser.parse_args()
 
-    mapped_fragments = get_mapped_fragments(args.input_sam)
+    mapped_fragments = utils.get_mapping_metadata(args.input_sam)
     combine_unmapped_and_mapped(args.input_fasta, mapped_fragments, args.max_slice_len)
 
     logging.shutdown()
