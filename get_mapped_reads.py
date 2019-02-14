@@ -3,6 +3,8 @@
 import argparse
 import gzip
 import logging
+import os
+import sys
 
 import pysam
 from Bio import SeqIO
@@ -26,7 +28,7 @@ def get_mapped_reads(samfile):
     return set(read_ids)
 
 
-def extract_mapped_read_records(fasta_file, read_ids):
+def extract_mapped_read_records(fasta_file, read_ids, mapped_out, unmapped_out):
     logging.info("Getting FASTA records that have mapped fragments ...")
     mappable = 0
     records = 0
@@ -35,9 +37,10 @@ def extract_mapped_read_records(fasta_file, read_ids):
             records += 1
             metadata = utils.read_header_to_dict(record.id)
             if utils.make_read_id(metadata) not in read_ids:
+                SeqIO.write(record, unmapped_out, "fasta")
                 continue
             mappable += 1
-            print(record.format("fasta"), end="")
+            SeqIO.write(record, mapped_out, "fasta")
     logging.info("%d records extracted from %d total (%.1f%%).", mappable, records, mappable / records * 100)
 
 
@@ -50,7 +53,15 @@ if __name__ == '__main__':
                         action="store", type=str)
     parser.add_argument("input_fasta", help="FASTA file with all the query sequences used in generating the SAM file "
                                             "(gzipped).", metavar="FASTA", action="store", type=str)
+    parser.add_argument("-m", "--mapped", help="Write the mappable reads to a file instead of stdout.",
+                        metavar="MAPPED", action="store", type=argparse.FileType("w"), default=sys.stdout)
+    parser.add_argument("-u", "--unmapped", help="Optionally output all unmappable sequences to this file.",
+                        metavar="UNMAPPED", action="store", type=argparse.FileType("w"), default=os.devnull)
     args = parser.parse_args()
 
-    mapped_read_ids = get_mapped_reads(args.input_sam)
-    extract_mapped_read_records(args.input_fasta, mapped_read_ids)
+    try:
+        mapped_read_ids = get_mapped_reads(args.input_sam)
+        extract_mapped_read_records(args.input_fasta, mapped_read_ids, args.mapped, args.unmapped)
+    finally:
+        args.mapped.close()
+        args.unmapped.close()
