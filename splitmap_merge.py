@@ -58,8 +58,8 @@ def compare_original_to_splitmap(original_sam, splitmap_sam):
                     # unclipped_increase = splitmap_fragments[lookup]["clipping"]["clip_start"]\
                     #                      + splitmap_fragments[lookup]["clipping"]["clip_end"]
                     continue
-                elif operation == "BothUnmMapped":
-                    is_improved.append(True)
+                elif operation == "BothUnmapped":
+                    # is_improved.append(True)
                     continue
                 else:
                     continue
@@ -71,8 +71,8 @@ def compare_original_to_splitmap(original_sam, splitmap_sam):
 
         # for frid in first_only:
         #     print(read_id, frid, "set1", sep="\t")
-        # for frid in second_only:
-        #     print(read_id, frid, "set2", sep="\t")
+        for frid in second_only:
+            print(read_id, frid, "new", sep="\t")
 
 
 def equal_positions(first_pos, second_pos, max_dist=0):
