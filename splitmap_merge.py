@@ -30,14 +30,25 @@ def compare_original_to_splitmap(original_sam, splitmap_sam):
         second_fragments = set()
         fragment_lookup = dict()
         for frid, metadata in splitmap_fragments.items():
-            srcfr = set(map(int, metadata["Src.Fr"].split(",")))
+            srcfr = list(map(int, metadata["Src.Fr"].split(",")))
+            operation = metadata["Src.Op"]
+            if operation == "LeftMapped":
+                srcfr = [srcfr[0]]
+            elif operation == "RightMapped":
+                srcfr = [srcfr[-1]]
+            elif operation == "BothMapped":
+                pass
+            elif operation == "BothUnmapped":
+                continue
+            srcfr = set(srcfr)
+
             for fragment in srcfr:
                 fragment_lookup.setdefault(fragment, list()).append(frid)
             second_fragments |= srcfr
 
-        first_only = first_fragments - second_fragments
-        second_only = second_fragments - first_fragments
-        intersecting = first_fragments & second_fragments
+        first_only = first_fragments - second_fragments  # fragments that didn't map the second time
+        second_only = second_fragments - first_fragments  # fragments that didn't map the first time (should be empty)
+        intersecting = first_fragments & second_fragments  # fragments that mapped both times
 
         for frid in intersecting:
             is_improved = []
@@ -69,8 +80,8 @@ def compare_original_to_splitmap(original_sam, splitmap_sam):
             if len(is_improved) > 0:
                 print(read_id, frid, "improved" if (True in is_improved) else "degraded", sep="\t")
 
-        # for frid in first_only:
-        #     print(read_id, frid, "set1", sep="\t")
+        for frid in first_only:
+            print(read_id, frid, "missing", sep="\t")
         for frid in second_only:
             print(read_id, frid, "new", sep="\t")
 
