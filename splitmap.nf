@@ -14,10 +14,9 @@ params.script_dir = "/home/thom/PycharmProjects/McHiC"
 
 
 // Queue channels
-Channel
+raw_files = Channel
 	.fromPath(params.input, checkIfExists: true)
 	.map { file -> tuple(file.simpleName, file) }
-	.into { raw_files1; raw_files2 }
 extend_len = [ 50, 100, 150, 200 ]
 
 
@@ -28,10 +27,10 @@ process mapFragments {
 	tag "${dataset}"
 
 	input:
-	set dataset, file(fa_file) from raw_files1
+	set dataset, file(fa_file) from raw_files
 
 	output:
-	set dataset, file("aligned.bam") into alignment_file
+	set dataset, file("aligned.bam"), file("${fa_file}") into alignment_file
 
 	script:
 """
@@ -49,11 +48,10 @@ process extractChimeric {
 	publishDir "${params.output_dir}", mode: "copy", overwrite: true
 
 	input:
-	set dataset, file(alignment) from alignment_file
+	set dataset, file(alignment), file(raw_reads) from alignment_file
 
 	output:
-	file "${dataset}.bam" into chimeric_file1
-	set dataset, file("${dataset}.bam") into chimeric_file2
+	set dataset, file("${dataset}.bam"), file("${raw_reads}") into chimeric_file
 
 	script:
 """
@@ -68,15 +66,14 @@ process extractMappable {
 	tag "${dataset}"
 
 	input:
-	file chimeric from chimeric_file1
-	set dataset, file(fa_file) from raw_files2
+	set dataset, file(chimeric), file(raw_reads) from chimeric_file
 
 	output:
-	set file("mappable.fa.gz"), file("unmappable.fa.gz") into reads_excerpt
+	set dataset, file("mappable.fa.gz"), file("unmappable.fa.gz"), file("${chimeric}") into reads_excerpt
 
 	script:
 """
-python3 "${params.script_dir}/get_mapped_reads.py" ${chimeric} ${fa_file} -m >(pigz -p ${task.cpus} > mappable.fa.gz) -u >(pigz -p ${task.cpus} > unmappable.fa.gz)
+python3 "${params.script_dir}/get_mapped_reads.py" ${chimeric} ${raw_reads} -m >(pigz -p ${task.cpus} > mappable.fa.gz) -u >(pigz -p ${task.cpus} > unmappable.fa.gz)
 """
 }
 
@@ -88,8 +85,7 @@ process makeSplitmapReads {
 	publishDir "${params.output_dir}", mode: "copy", overwrite: true
 
 	input:
-	set dataset, file(chimeric) from chimeric_file2
-	set file(mappable), file(unmappable) from reads_excerpt
+	set dataset, file(mappable), file(unmappable), file(chimeric) from reads_excerpt
 	each extension from extend_len
 
 	output:
