@@ -17,7 +17,7 @@ params.script_dir = "/home/thom/PycharmProjects/McHiC"
 raw_files = Channel
 	.fromPath(params.input, checkIfExists: true)
 	.map { file -> tuple(file.simpleName, file) }
-extend_len = [ 50, 100, 150, 200 ]
+extend_len = [ 50, 100, 150, 200, 250, 300 ]
 
 
 // Align digested reads
