@@ -133,3 +133,78 @@ mapdiff_plot <- ggplot(maplen_comparison, aes(x = effective_appended, fill = "Le
   annotate("text", x = median(maplen_comparison$effective_appended), y = 1500, label = sprintf("median: %.0f", mean(maplen_comparison$effective_appended)), colour = "darkgreen", vjust = - 1, hjust = 0, angle = 270) +
   ggtitle(sprintf("Difference of map length between %d alignments", nrow(maplen_comparison)))
 mapdiff_plot
+
+# plot mapping performance
+perf <- data.frame(sample = NULL, size = NULL, improved = NULL, total = NULL)
+for (f in Sys.glob("/data0/thom/splitmap/*.csv")) {
+  df <- read.delim(f)
+  fname <- strsplit(basename(f), ".", fixed = T)[[1]][1]
+  sample <- strsplit(fname, "_", fixed = T)[[1]][2]
+  extend <- strsplit(fname, "_", fixed = T)[[1]][4]
+  perf <- rbind(perf, data.frame(
+  sample = sample,
+  size = extend,
+  improved = sum(df$event == "improved"),
+  total = nrow(df)
+  ))
+}
+perf$size <- reorder(perf$size, as.numeric(perf$size))
+
+map_perf <- ggplot(perf, aes(x = sample, y = improved / total, fill = size)) +
+  geom_col(position = "dodge") +
+  theme_classic2() +
+  labs(
+  title = "Second iteration mapping performance",
+  subtitle = "Mapping performance of the merged fragments",
+  x = "Dataset",
+  y = "Fraction of cases"
+  ) +
+  scale_y_continuous(labels = scales::percent, expand = c(0, 0, 0, 0.1)) +
+  geom_text(
+  aes(label = improved),
+  vjust = 1,
+  hjust = - 0,
+  angle = 90,
+  col = "black",
+  fontface = "bold",
+  position = position_dodge(width = 1)
+  ) +
+  theme(
+  plot.title = element_text(face = "bold", hjust = 0.5),
+  axis.text.x = element_text(angle = 0, vjust = 0.5)
+  ) +
+  scale_fill_brewer(palette = "Set1")
+map_perf
+
+# raw read stats
+read_stats <- read_ods("/data0/thom/mc4c_fa/stats.ods")
+read_stats$decrease <- 1 - read_stats$fragments / read_stats$`raw reads`
+read_stats.m <- melt(read_stats, id.vars = c("identifier", "decrease"), measure.vars = c("raw reads", "fragments"))
+readstat_plot <- ggplot(read_stats.m, aes(x = identifier, y = value, fill = variable)) +
+  geom_col(position = "identity", alpha = 1) +
+  theme_classic2() +
+  scale_y_continuous(expand = c(0, 0, 0.1, 0), labels = scales::scientific) +
+  labs(
+  title = "Number of reads per MC-4C dataset",
+  x = "Dataset",
+  y = "Read count"
+  ) +
+  geom_text(
+  aes(label = value),
+  vjust = - 0.5,
+  hjust = 0.5,
+  col = "black"
+  ) +
+  geom_text(
+  data = read_stats.m[read_stats.m$variable == "fragments",],
+  aes(label = sprintf("-%.1f%%", decrease * 100)),
+  vjust = 1.3,
+  hjust = 0.5,
+  col = "yellow",
+  fontface = "bold"
+  ) +
+  theme(
+  plot.title = element_text(face = "bold", hjust = 0.5)
+  ) +
+  scale_fill_brewer(palette = "Set1")
+readstat_plot
