@@ -5,7 +5,7 @@ import gzip
 import logging
 
 import pysam
-from Bio import Seq, SeqIO, SeqRecord
+from Bio import SeqIO, SeqRecord
 from Bio.Alphabet import IUPAC
 
 import utils
@@ -45,17 +45,17 @@ def combine_unmapped_and_mapped(fasta_file, mapped_fragments):
                 continue
 
             total_reads += 1
-            if last_id in mapped_fragments:
-                mapped_fragments[last_id] = sorted(set(mapped_fragments[last_id]))
-                fragment_id = 0
-                for new_record in do_merge(read_records, mapped_fragments[last_id]):
-                    new_record.id = "Fq.Id:{:s};Rd.Id:{:s};Rd.Ln:{:s};Fr.Id:{:d};Fr.Ln:{:d};{:s}".format(
-                        last_metadata["Fq.Id"], last_metadata["Rd.Id"], last_metadata["Rd.Ln"], fragment_id,
-                        len(new_record.seq), new_record.id)
-                    print(new_record.format("fasta"), end="")
-                    fragment_id += 1
-            else:
+            if last_id not in mapped_fragments:
                 unmapped_reads += 1
+            mapped_fragments[last_id] = sorted(set(mapped_fragments.get(last_id, list())))
+
+            fragment_id = 0
+            for new_record in merge_unmapped(read_records, mapped_fragments[last_id]):
+                new_record.id = "Fq.Id:{:s};Rd.Id:{:s};Rd.Ln:{:s};Fr.Id:{:d};Fr.Ln:{:d};{:s}".format(
+                    last_metadata["Fq.Id"], last_metadata["Rd.Id"], last_metadata["Rd.Ln"], fragment_id,
+                    len(new_record.seq), new_record.id)
+                print(new_record.format("fasta"), end="")
+                fragment_id += 1
 
             last_id = fasta_id
             last_metadata = record_metadata
@@ -64,13 +64,10 @@ def combine_unmapped_and_mapped(fasta_file, mapped_fragments):
                  unmapped_reads / total_reads * 100)
 
 
-def do_merge(fasta_records, mapped_fragments, add_length_cutoff=50):
+def merge_unmapped(fasta_records, mapped_fragments):
     """
-    When an unmapped region exists betweeen two mapped fragments, generate new
-    fragments by extending both mapped fragments into the unmapped region. The
-    extension will stop when it reaches the other mapped fragment or when the
-    length threshold is exceeded. Only the longest fragments are returned from
-    both extensions.
+    Generate new fragments from two unmapped ones. All adjoined unmapped
+    fragments will be concatenated to create a single, larger fragment.
 
     :type fasta_records: list
     :param fasta_records: A list containing all the SeqRecords generated from a
@@ -80,68 +77,35 @@ def do_merge(fasta_records, mapped_fragments, add_length_cutoff=50):
     :param mapped_fragments: A list containing the Fr.Ids of the mapped
         fragments.
 
-    :type add_length_cutoff: int
-    :param add_length_cutoff: When the fragment is extended by more than this
-        value, stop extending.
-
     :rtype list
     :return: A list containing the new SeqRecords.
     """
     new_seqs = list()
 
-    mapped_count = len(mapped_fragments)
-    if mapped_count < 2:  # no in-between unmapped fragments exist
+    if len(fasta_records) < 2:
+        # no fragments to merge
         return new_seqs
 
-    last_id = mapped_fragments[0]
-    for fragment, idx in zip(mapped_fragments, range(mapped_count)):
-        jump_size = fragment - last_id - 1  # number of fragments skipped
-        last_id = fragment
-
-        if jump_size <= 0 or idx < 1:  # skip contiguous and first mapped fragment
+    for fragment_idx in range(1, len(fasta_records)):
+        if fragment_idx in mapped_fragments or fragment_idx - 1 in mapped_fragments:
+            # not both unmapped
             continue
 
-        jump_region = list(range(mapped_fragments[idx - 1], fragment + 1))
+        prev_fragment = fasta_records[fragment_idx - 1]
+        cur_fragment = fasta_records[fragment_idx]
 
-        # extend from left
-        left_extend = None
-        left_orig_len = len(fasta_records[jump_region[0]])
-        for i in range(2, len(jump_region)):
-            seq = Seq.Seq("".join([str(fasta_records[x].seq) for x in jump_region[:i]]), alphabet=IUPAC.unambiguous_dna)
-            left_extend = SeqRecord.SeqRecord(
-                seq[:left_orig_len + add_length_cutoff],
-                id="Src.Op:MergeMap;Src.Fr:{:s};Src.Ori:Left".format(",".join([str(x) for x in jump_region[:i]])),
-                description="", name=""
-            )
-            appended_length = len(left_extend) - left_orig_len
-            left_extend.id = "{:s};Src.Ln:{:d}".format(left_extend.id, appended_length)
-
-            if appended_length >= add_length_cutoff:
-                break
-        new_seqs.append(left_extend)
-
-        # extend from right
-        right_extend = None
-        right_orig_len = len(fasta_records[jump_region[-1]])
-        for i in range(len(jump_region) - 2, 0, -1):
-            seq = Seq.Seq("".join([str(fasta_records[x].seq) for x in jump_region[i:]]), alphabet=IUPAC.unambiguous_dna)
-            right_extend = SeqRecord.SeqRecord(
-                seq[-(right_orig_len + add_length_cutoff):],
-                id="Src.Op:MergeMap;Src.Fr:{:s};Src.Ori:Right".format(",".join([str(x) for x in jump_region[i:]])),
-                description="", name=""
-            )
-            appended_length = len(right_extend) - right_orig_len
-            right_extend.id = "{:s};Src.Ln:{:d}".format(right_extend.id, appended_length)
-
-            if appended_length >= add_length_cutoff:
-                break
-        new_seqs.append(right_extend)
+        seq = prev_fragment.seq + cur_fragment.seq
+        new_seqs.append(SeqRecord.SeqRecord(
+            seq,
+            id="Src.Op:MergeMap;Src.Fr:{:d},{:d}".format(fragment_idx - 1, fragment_idx),
+            description="", name=""
+        ))
 
     return new_seqs
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(message)s")
+    utils.init_logger()
 
     # get command-line arguments
     parser = argparse.ArgumentParser()
