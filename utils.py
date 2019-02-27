@@ -126,7 +126,8 @@ def unclipped_length(cigar_tuple):
 
 def make_read_id(metadata):
     """
-    Create an ID from the read metadata that is unique to the source read.
+    Create an ID from the read metadata that is unique to the source read. It
+    is formatted like "{Fq.Id}_{Rd.Id}".
 
     :type metadata: dict
     :param metadata: Dictionary containing the metadata of the alignment.
