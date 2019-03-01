@@ -14,9 +14,9 @@ def calculate_2mer_freq(counts_file):
         records = csv.reader(handle, delimiter="\t")
         next(records)
         for row in records:
-            nuc1 = str(row[0][0])
-            nuc2 = str(row[0][1])
-            count = int(row[1])
+            nuc1 = str(row[0])
+            nuc2 = str(row[1])
+            count = int(row[2])
 
             left = "x{}".format(nuc2)
             right = "{}x".format(nuc1)
