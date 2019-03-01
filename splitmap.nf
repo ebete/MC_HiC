@@ -45,7 +45,7 @@ process extractChimeric {
 	cpus 1
 	memory "500MB"
 	tag "${dataset}"
-	publishDir "${params.output_dir}", mode: "copy", overwrite: true
+	publishDir "${params.output_dir}", mode: "copy", overwrite: true, pattern: "*.bam"
 
 	input:
 	set dataset, file(alignment), file(raw_reads) from alignment_file
@@ -64,16 +64,17 @@ process extractMappable {
 	label "multicore"
 	memory "500MB"
 	tag "${dataset}"
+	publishDir "${params.output_dir}", mode: "copy", overwrite: true, pattern: "*mappable.fa.gz"
 
 	input:
 	set dataset, file(chimeric), file(raw_reads) from chimeric_file
 
 	output:
-	set dataset, file("mappable.fa.gz"), file("unmappable.fa.gz"), file("${chimeric}") into reads_excerpt1, reads_excerpt2
+	set dataset, file("${dataset}_mappable.fa.gz"), file("${dataset}_unmappable.fa.gz"), file("${chimeric}") into reads_excerpt1, reads_excerpt2
 
 	script:
 """
-python3 "${params.script_dir}/get_mapped_reads.py" ${chimeric} ${raw_reads} -m >(pigz -p ${task.cpus} > mappable.fa.gz) -u >(pigz -p ${task.cpus} > unmappable.fa.gz)
+python3 "${params.script_dir}/get_mapped_reads.py" "${chimeric}" "${raw_reads}" -m >(pigz -p ${task.cpus} > "${dataset}_mappable.fa.gz") -u >(pigz -p ${task.cpus} > "${dataset}_unmappable.fa.gz")
 """
 }
 
@@ -82,7 +83,7 @@ process makeSplitmapReads {
 	label "multicore"
 	memory { 2.GB * task.cpus }
 	tag "${dataset}"
-	publishDir "${params.output_dir}", mode: "copy", overwrite: true
+	publishDir "${params.output_dir}", mode: "copy", overwrite: true, pattern: "*.csv"
 
 	input:
 	set dataset, file(mappable), file(unmappable), file(chimeric) from reads_excerpt1
@@ -112,7 +113,7 @@ process makeMergemapReads {
 	label "multicore"
 	memory { 2.GB * task.cpus }
 	tag "${dataset}"
-	publishDir "${params.output_dir}", mode: "copy", overwrite: true
+	publishDir "${params.output_dir}", mode: "copy", overwrite: true, pattern: "*.csv"
 
 	input:
 	set dataset, file(mappable), file(unmappable), file(chimeric) from reads_excerpt2

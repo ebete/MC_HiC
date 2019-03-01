@@ -208,3 +208,16 @@ readstat_plot <- ggplot(read_stats.m, aes(x = identifier, y = value, fill = vari
   ) +
   scale_fill_brewer(palette = "Set1")
 readstat_plot
+
+# MergeMap MAPQ scores
+mergemap <- read.delim("/data0/thom/mergemap_splitmap/mergemap.csv", stringsAsFactors=FALSE)
+ggplot(mergemap, aes(x=mapq)) +
+  geom_histogram(binwidth = 1, aes(y=..density..)) +
+  scale_y_continuous(expand = c(0,0), labels=percent) +
+  theme_classic() +
+  scale_fill_brewer(palette = "Dark2") +
+  labs(
+    title = sprintf("Mapping quality of %d MergeMap alignments", nrow(mergemap)),
+    x = "MAPQ",
+    y = "Fraction of alignments"
+  )
