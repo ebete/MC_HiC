@@ -35,8 +35,8 @@ process mapFragments {
 	script:
 """
 bwa mem -x ont2d -t ${task.cpus} -k 10 -q "/data0/thom/mm9/mm9.fa" "${fa_file}" \
-| samtools view -q 1 -F 260 -b \
-| samtools sort -o "aligned.bam"
+	| samtools view -q 1 -F 260 -b \
+	| samtools sort -o "aligned.bam"
 """
 }
 
@@ -69,7 +69,7 @@ process extractMappable {
 	set dataset, file(chimeric), file(raw_reads) from chimeric_file
 
 	output:
-	set dataset, file("mappable.fa.gz"), file("unmappable.fa.gz"), file("${chimeric}") into reads_excerpt
+	set dataset, file("mappable.fa.gz"), file("unmappable.fa.gz"), file("${chimeric}") into reads_excerpt1, reads_excerpt2
 
 	script:
 """
@@ -85,7 +85,7 @@ process makeSplitmapReads {
 	publishDir "${params.output_dir}", mode: "copy", overwrite: true
 
 	input:
-	set dataset, file(mappable), file(unmappable), file(chimeric) from reads_excerpt
+	set dataset, file(mappable), file(unmappable), file(chimeric) from reads_excerpt1
 	each extension from extend_len
 
 	output:
@@ -94,16 +94,46 @@ process makeSplitmapReads {
 	script:
 """
 python3 "${params.script_dir}/splitmap.py" -m ${extension} "${chimeric}" "${mappable}" \
-| pigz -p ${task.cpus} \
-> "splitmap.fa.gz"
+	| pigz -p ${task.cpus} \
+	> "splitmap.fa.gz"
 
 bwa mem -x ont2d -t ${task.cpus} -k 10 -q "/data0/thom/mm9/mm9.fa" "splitmap.fa.gz" \
-| samtools view -b -q 1 \
-| samtools sort \
-> "splitmap.bam"
+	| samtools view -b -q 1 \
+	| samtools sort \
+	> "splitmap.bam"
 
 python3 "${params.script_dir}/splitmap_merge.py" "${chimeric}" "splitmap.bam" \
-> "${dataset}_${extension}.csv"
+	> "${dataset}_${extension}.csv"
+"""
+}
+
+// Run MergeMap read alignment
+process makeMergemapReads {
+	label "multicore"
+	memory { 2.GB * task.cpus }
+	tag "${dataset}"
+	publishDir "${params.output_dir}", mode: "copy", overwrite: true
+
+	input:
+	set dataset, file(mappable), file(unmappable), file(chimeric) from reads_excerpt2
+
+	output:
+	file "${dataset}_mergemap.csv" into mergemap_perf
+
+	script:
+"""
+python3 "${params.script_dir}/mergemap.py" "${chimeric}" "${mappable}" \
+	| pigz -p ${task.cpus} \
+	> "mergemap.fa.gz"
+
+bwa mem -x ont2d -t ${task.cpus} -k 10 -q "/data0/thom/mm9/mm9.fa" "mergemap.fa.gz" \
+	| samtools view -b -q 1 \
+	| samtools sort \
+	> "mergemap.bam"
+
+samtools view "mergemap.bam" \
+	| awk -F "\t" 'BEGIN{OFS="\t"; print "read_id","mapq";} {print \$1,\$5}' \
+	> "${dataset}_mergemap.csv"
 """
 }
 
