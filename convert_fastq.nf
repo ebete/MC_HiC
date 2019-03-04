@@ -15,6 +15,9 @@ params.read_min = "1500"
 params.read_max = "8000"
 params.output_dir = "./"
 params.script_dir = "/home/thom/PycharmProjects/McHiC"
+// notify on completion
+notification.enabled = true
+notification.to = "t.griffioen@hubrecht.eu"
 
 
 // Queue channels
@@ -36,7 +39,7 @@ process filterFastq {
 
 	script:
 """
-pigz -cd ${fq_file} \
+gzip -cd ${fq_file} \
 | bioawk -c fastx 'length(\$seq)<=${params.read_max} && length(\$seq)>=${params.read_min} {print "@" \$name " " \$comment "\\n" \$seq "\\n+\\n" \$qual;}' \
 | pigz -p ${task.cpus} > "${dataset}"
 """

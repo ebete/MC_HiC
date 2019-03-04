@@ -6,6 +6,11 @@
  * Run the Multi-Contact Hi-C pipeline
  */
 
+// notify on completion
+notification.enabled = true
+notification.to = "t.griffioen@hubrecht.eu"
+
+
 // Queue channels
 raw_files = Channel
 	.fromPath(params.input, checkIfExists: true)

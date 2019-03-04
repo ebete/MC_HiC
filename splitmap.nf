@@ -11,7 +11,9 @@
 params.input = "*.fa.gz"
 params.output_dir = "./"
 params.script_dir = "/home/thom/PycharmProjects/McHiC"
-
+// notify on completion
+notification.enabled = true
+notification.to = "t.griffioen@hubrecht.eu"
 
 // Queue channels
 raw_files = Channel
@@ -43,7 +45,7 @@ bwa mem -x ont2d -t ${task.cpus} -k 10 -q "/data0/thom/mm9/mm9.fa" "${fa_file}" 
 // Extract all chimeric reads
 process extractChimeric {
 	cpus 1
-	memory "500MB"
+	memory "5GB"
 	tag "${dataset}"
 	publishDir "${params.output_dir}", mode: "copy", overwrite: true, pattern: "*.bam"
 
@@ -62,7 +64,7 @@ python3 "${params.script_dir}/extract_chimeric.py" -m 3 "${alignment}" "${datase
 // Extract the reads with a mappable fragment
 process extractMappable {
 	label "multicore"
-	memory "500MB"
+	memory "1GB"
 	tag "${dataset}"
 	publishDir "${params.output_dir}", mode: "copy", overwrite: true, pattern: "*mappable.fa.gz"
 
@@ -133,9 +135,25 @@ bwa mem -x ont2d -t ${task.cpus} -k 10 -q "/data0/thom/mm9/mm9.fa" "mergemap.fa.
 	> "mergemap.bam"
 
 samtools view "mergemap.bam" \
-	| awk -F "\t" 'BEGIN{OFS="\t"; print "read_id","mapq";} {print \$1,\$5}' \
+	| awk 'BEGIN{FS="\\t"; OFS="\\t"; print "read_id","mapq";} {print \$1,\$5}' \
 	> "${dataset}_mergemap.csv"
 """
 }
+
+
+// Workflow end
+// workflow.onComplete {
+// 	def msg = """\
+// 		splitmap.nf execution summary
+// 		---------------------------
+// 		Completed at: ${workflow.complete}
+// 		Duration    : ${workflow.duration}
+// 		Success     : ${workflow.success}
+// 		workDir     : ${workflow.workDir}
+// 		exit status : ${workflow.exitStatus}
+// 	""".stripIndent()
+
+// 	sendMail(to: 't.griffioen@hubrecht.eu', subject: 'Pipeline finished', body: msg)
+// }
 
 // vim: noet:ai:colorcolumn=0
