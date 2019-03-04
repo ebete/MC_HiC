@@ -6,6 +6,9 @@ suppressPackageStartupMessages({
   library(scales)
   library(RColorBrewer)
   library(ggpubr)
+  library(readODS)
+  library(dplyr)
+  library(tidyr)
 })
 
 # draw mapped fragments on top of the original read
@@ -177,9 +180,62 @@ map_perf <- ggplot(perf, aes(x = sample, y = improved / total, fill = size)) +
 map_perf
 
 # raw read stats
-read_stats <- read_ods("/data0/thom/mc4c_fa/stats.ods")
-read_stats$decrease <- 1 - read_stats$fragments / read_stats$`raw reads`
-read_stats.m <- melt(read_stats, id.vars = c("identifier", "decrease"), measure.vars = c("raw reads", "fragments"))
+mc4c_stats <- read_ods("/data0/thom/mc4c_fa/stats.ods")
+read_stats <- mc4c_stats %>%
+  mutate(failed_size_selection = 1 - `filtered reads` / `raw reads`) %>%
+  mutate(indigestable = 1 -
+    `digested reads` / `raw reads` -
+    failed_size_selection) %>%
+  mutate(usable_reads = 1 - indigestable - failed_size_selection) %>%
+  select(identifier, `raw reads`, failed_size_selection, indigestable, usable_reads) %>%
+  gather(event_type, fraction, - identifier, - `raw reads`, factor_key = T)
+fragment_stats <- mc4c_stats %>%
+  mutate(fragment_mapping_rate = `mappable fragments` / `digested fragments`) %>%
+  mutate(fragment_dropped_rate = 1 - fragment_mapping_rate) %>%
+  select(identifier, `digested fragments`, fragment_mapping_rate, fragment_dropped_rate) %>%
+  gather(event_type, fraction, - identifier, - `digested fragments`, factor_key = T)
+
+ggplot(read_stats, aes(x = sprintf("%s\n(%d)", identifier, `raw reads`), y = fraction, fill = event_type)) +
+  geom_col(position = "stack") +
+  scale_y_continuous(expand = c(0, 0), labels = percent) +
+  geom_text(
+  aes(label = sprintf("%.1f%%", fraction * 100)),
+  hjust = 0.5,
+  position = position_stack(vjust = .5),
+  col = "white",
+  fontface = "bold"
+  ) +
+  theme_pubr(legend = "top") +
+  theme(
+  plot.title = element_text(face = "bold", hjust = 0.5)
+  ) +
+  scale_fill_brewer(palette = "Dark2") +
+  labs(
+  title = "Initial read filtering",
+  x = "Dataset",
+  y = "Fraction of raw reads"
+  )
+ggplot(fragment_stats, aes(x = sprintf("%s\n(%d)", identifier, `digested fragments`), y = fraction, fill = event_type)) +
+  geom_col(position = "stack") +
+  scale_y_continuous(expand = c(0, 0), labels = percent) +
+  geom_text(
+  aes(label = sprintf("%.1f%%", fraction * 100)),
+  hjust = 0.5,
+  position = position_stack(vjust = .5),
+  col = "white",
+  fontface = "bold"
+  ) +
+  theme_pubr() +
+  theme(
+  plot.title = element_text(face = "bold", hjust = 0.5)
+  ) +
+  scale_fill_brewer(palette = "Dark2") +
+  labs(
+  title = "Initial fragment alignment",
+  x = "Dataset",
+  y = "Fraction of created fragments"
+  )
+
 readstat_plot <- ggplot(read_stats.m, aes(x = identifier, y = value, fill = variable)) +
   geom_col(position = "identity", alpha = 1) +
   theme_classic2() +
@@ -196,7 +252,7 @@ readstat_plot <- ggplot(read_stats.m, aes(x = identifier, y = value, fill = vari
   col = "black"
   ) +
   geom_text(
-  data = read_stats.m[read_stats.m$variable == "fragments",],
+  data = read_stats.m[read_stats.m$variable == "filtered reads",],
   aes(label = sprintf("-%.1f%%", decrease * 100)),
   vjust = 1.3,
   hjust = 0.5,
