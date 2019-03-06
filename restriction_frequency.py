@@ -6,9 +6,10 @@ import logging
 import os
 import pickle
 import re
-from glob import iglob
 
 from Bio import SeqIO, Restriction
+
+import utils
 
 
 def site_frequency(fasta_file, enzyme, max_mismatch):
@@ -83,18 +84,18 @@ def get_close_matches(seq, site, mismatch_cutoff=0):
     return match_pos
 
 
-def export_site_index(fname, overwrite=False):
+def export_site_index(fname, enzyme_name="", overwrite=False):
     if os.path.exists(fname) and not overwrite:
         logging.warning("File %s exists; Index will not be updated.", fname)
         return
 
-    logging.info("Creating %s index file %s ...", args.enzyme, fname)
+    logging.info("Creating %s index file %s ...", enzyme_name, fname)
     with open(fname, "wb") as index_file:
         pickle.dump(site_freq, index_file, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG, format="[%(asctime)s]: %(message)s")
+    utils.init_logger()
 
     # Get command argument
     parser = argparse.ArgumentParser()
@@ -109,14 +110,13 @@ if __name__ == "__main__":
                         metavar="MISMATCHES", action="store", type=int, default=0)
     args = parser.parse_args()
 
-    file_list = [f for pattern in args.input_fasta for f in iglob(pattern)]
     enzyme_list = args.enzyme.split(',')
 
-    for fasta in file_list:
+    for fasta in utils.glob_all_files(args.input_fasta):
         for enzyme in enzyme_list:
             site_freq = site_frequency(fasta, enzyme, args.max_mismatch)
 
             if not args.output_index:
                 continue
             fname = "{:s}.{:s}".format(fasta, enzyme)
-            export_site_index(fname, args.overwrite)
+            export_site_index(fname, enzyme, args.overwrite)
