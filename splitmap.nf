@@ -140,20 +140,4 @@ samtools view "mergemap.bam" \
 """
 }
 
-
-// Workflow end
-// workflow.onComplete {
-// 	def msg = """\
-// 		splitmap.nf execution summary
-// 		---------------------------
-// 		Completed at: ${workflow.complete}
-// 		Duration    : ${workflow.duration}
-// 		Success     : ${workflow.success}
-// 		workDir     : ${workflow.workDir}
-// 		exit status : ${workflow.exitStatus}
-// 	""".stripIndent()
-
-// 	sendMail(to: 't.griffioen@hubrecht.eu', subject: 'Pipeline finished', body: msg)
-// }
-
 // vim: noet:ai:colorcolumn=0
