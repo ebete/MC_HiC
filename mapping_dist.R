@@ -9,9 +9,12 @@ suppressPackageStartupMessages({
   library(readODS)
   library(dplyr)
   library(tidyr)
+  library(latex2exp)
 })
 
+#####
 # draw mapped fragments on top of the original read
+#####
 aln_coords <- read.csv("/data0/thom/conservative_aln/aln_coords.csv", sep = ";", header = T)
 plot.new(); plot.window(ylim = c(1, nrow(aln_coords) + 1), xlim = c(min(aln_coords$start) - 1, max(aln_coords$end) + 1))
 for (i in 1 : nrow(aln_coords)) {
@@ -19,7 +22,9 @@ for (i in 1 : nrow(aln_coords)) {
   segments(aln_coords[i,]$start, i, aln_coords[i,]$end, i, col = line_col, lty = 1, lwd = max(aln_coords[i,]$mapq / 10, 1))
 }
 
+#####
 # plot the distribution of the distance to DpnII sites
+#####
 cutsite_dist <- rbind(
 cbind(MAPQ = "1", read.csv("/data0/thom/conservative_aln/LVR_HS5_NP_lowQ_chimeric.csv", sep = "\t", header = T)),
 cbind(MAPQ = "60", read.csv("/data0/thom/conservative_aln/LVR_HS5_NP-digested_chimeric.csv", sep = "\t", header = T))
@@ -37,7 +42,9 @@ cutsite_plot <- ggplot(cutsite_dist.melt, aes(x = abs(value), fill = MAPQ, color
   ggtitle("Distribution of distance between fragment ends and DpnII")
 cutsite_plot
 
+#####
 # plot the distribution of mapped fragment lengths
+#####
 map_len <- rbind(
 data.frame(MAPQ = "1", length = scan("/data0/thom/conservative_aln/LVR_HS5_NP_lowQ_chimeric_len.txt", numeric())),
 data.frame(MAPQ = "60", length = scan("/data0/thom/conservative_aln/LVR_HS5_NP-digested_chimeric_len.txt", numeric()))
@@ -53,7 +60,9 @@ maplen_plot <- ggplot(map_len, aes(x = length, fill = MAPQ, color = MAPQ)) +
   ggtitle("Mapped fragment length distribution")
 maplen_plot
 
+#####
 # plot the distribution of read fragment coverage
+#####
 coverage_hq <- read.csv("/data0/thom/conservative_aln/LVR_HS5_NP-digested_chimeric_coverage.csv", sep = ";", header = T)
 coverage_lq <- read.csv("/data0/thom/conservative_aln/LVR_HS5_NP_lowQ_chimeric_coverage.csv", sep = ";", header = T)
 coverage <- rbind(
@@ -72,7 +81,9 @@ coverage_plot <- ggplot(coverage, aes(x = coverage, fill = MAPQ, color = MAPQ)) 
   ggtitle("Distribution of reads mapped")
 coverage_plot
 
+#####
 # show cis/trans mapping MAPQ distribution
+#####
 trans_mappings <- read.csv("/data0/thom/conservative_aln/cis_trans_qual.csv", sep = "\t", header = T, as.is = T)
 trans_mappings$reference[trans_mappings$reference != "chr7"] <- "trans"
 trans_mappings$reference[trans_mappings$reference == "chr7"] <- "cis"
@@ -89,7 +100,9 @@ cistrans_plot <- ggplot(trans_mappings, aes(x = MAPQ, fill = reference, color = 
   ylab("Fraction of mapped fragments")
 cistrans_plot
 
+#####
 # normalised alignment score
+#####
 norm_aln <- read.delim("/data0/thom/conservative_aln/norm_aln.csv", header = T, sep = '\t')
 norm_aln$norm_aln_score <- (norm_aln$norm_aln_score - min(norm_aln$norm_aln_score)) / (max(norm_aln$norm_aln_score) - min(norm_aln$norm_aln_score))
 norm_aln$mapq <- factor(as.integer(norm_aln$mapq / 10) * 10, labels = c("0-9", "10-19", "20-29", "30-39", "40-49", "50-59", "60"))
@@ -105,10 +118,14 @@ alnscore_plot <- ggplot(norm_aln, aes(x = norm_aln_score, fill = mapq)) +
   ylab("Density")
 alnscore_plot
 
+#####
 # combine all plots
+#####
 ggarrange(cutsite_plot, maplen_plot, coverage_plot, cistrans_plot, alnscore_plot, ncol = 2, nrow = 3, labels = c("(1)", "(2)", "(3)", "(4)", "(5)"))
 
+#####
 # plot the length distribution of the two mapping approaches
+#####
 maplen_comparison <- read.delim("/data0/thom/mergemap_splitmap/mergemap.csv", header = T, stringsAsFactors = F)
 maplen_comparison$len_diff <- maplen_comparison$mergemap_length - maplen_comparison$original_length
 maplen_comparison$mq_diff <- maplen_comparison$mergemap_mapq - maplen_comparison$original_mapq
@@ -137,9 +154,11 @@ mapdiff_plot <- ggplot(maplen_comparison, aes(x = effective_appended, fill = "Le
   ggtitle(sprintf("Difference of map length between %d alignments", nrow(maplen_comparison)))
 mapdiff_plot
 
+#####
 # plot mapping performance
+#####
 perf <- data.frame(sample = NULL, size = NULL, improved = NULL, total = NULL)
-for (f in Sys.glob("/data0/thom/splitmap/*.csv")) {
+for (f in Sys.glob("/data0/thom/splitmap/*_digested_[0-9]*.csv")) {
   df <- read.delim(f)
   fname <- strsplit(basename(f), ".", fixed = T)[[1]][1]
   sample <- strsplit(fname, "_", fixed = T)[[1]][2]
@@ -151,59 +170,75 @@ for (f in Sys.glob("/data0/thom/splitmap/*.csv")) {
   total = nrow(df)
   ))
 }
-perf$size <- reorder(perf$size, as.numeric(perf$size))
+rm(df)
+perf$size <- reorder(perf$size, as.numeric(levels(perf$size))[perf$size])
 
-map_perf <- ggplot(perf, aes(x = sample, y = improved / total, fill = size)) +
-  geom_col(position = "dodge") +
-  theme_classic2() +
+ggplot(perf, aes(x = size, y = improved / total, group = sample, colour = sample)) +
+  geom_line() +
   labs(
   title = "Second iteration mapping performance",
   subtitle = "Mapping performance of the merged fragments",
   x = "Dataset",
   y = "Fraction of cases"
   ) +
-  scale_y_continuous(labels = scales::percent, expand = c(0, 0, 0, 0.1)) +
-  geom_text(
-  aes(label = improved),
-  vjust = 1,
-  hjust = - 0,
-  angle = 90,
-  col = "black",
-  fontface = "bold",
-  position = position_dodge(width = 1)
-  ) +
+  scale_y_continuous(labels = scales::percent, expand = c(0, 0)) +
+  theme_pubr(legend = "right") +
   theme(
   plot.title = element_text(face = "bold", hjust = 0.5),
   axis.text.x = element_text(angle = 0, vjust = 0.5)
   ) +
-  scale_fill_brewer(palette = "Set1")
+  scale_colour_brewer(palette = "Set1")
 map_perf
 
-# raw read stats
+##################
+# raw read stats #
+##################
 mc4c_stats <- read_ods("/data0/thom/mc4c_fa/stats.ods")
 read_stats <- mc4c_stats %>%
   mutate(failed_size_selection = 1 - `filtered reads` / `raw reads`) %>%
-  mutate(indigestable = 1 -
+  mutate(indigestible = 1 -
     `digested reads` / `raw reads` -
     failed_size_selection) %>%
-  mutate(usable_reads = 1 - indigestable - failed_size_selection) %>%
-  select(identifier, `raw reads`, failed_size_selection, indigestable, usable_reads) %>%
+  mutate(usable_reads = 1 - indigestible - failed_size_selection) %>%
+  select(identifier, `raw reads`, failed_size_selection, indigestible, usable_reads) %>%
+  mutate_at(c("identifier"), as.factor) %>%
   gather(event_type, fraction, - identifier, - `raw reads`, factor_key = T)
-fragment_stats <- mc4c_stats %>%
-  mutate(fragment_mapping_rate = `mappable fragments` / `digested fragments`) %>%
-  mutate(fragment_dropped_rate = 1 - fragment_mapping_rate) %>%
-  select(identifier, `digested fragments`, fragment_mapping_rate, fragment_dropped_rate) %>%
-  gather(event_type, fraction, - identifier, - `digested fragments`, factor_key = T)
 
-ggplot(read_stats, aes(x = sprintf("%s\n(%d)", identifier, `raw reads`), y = fraction, fill = event_type)) +
+fragment_stats_new <- mc4c_stats %>%
+  mutate(fragment_hq_rate = `mq60 fragments` / `digested fragments`) %>%
+  mutate(fragment_lq_rate = `mapped fragments` / `digested fragments` - fragment_hq_rate) %>%
+  mutate(fragment_dropped_rate = 1 - fragment_lq_rate - fragment_hq_rate) %>%
+  select(identifier, `digested fragments`, fragment_hq_rate, fragment_lq_rate, fragment_dropped_rate) %>%
+  mutate_at(c("identifier"), as.factor) %>%
+  gather(event_type, fraction, - identifier, - `digested fragments`, factor_key = T) %>%
+  mutate(config = "new")
+
+fragment_stats_amin <- mc4c_stats %>%
+  mutate(fragment_hq_rate = `mq60 amin` / `digested fragments`) %>%
+  mutate(fragment_lq_rate = `mapped amin` / `digested fragments` - fragment_hq_rate) %>%
+  mutate(fragment_dropped_rate = 1 - fragment_lq_rate - fragment_hq_rate) %>%
+  select(identifier, `digested fragments`, fragment_hq_rate, fragment_lq_rate, fragment_dropped_rate) %>%
+  mutate_at(c("identifier"), as.factor) %>%
+  gather(event_type, fraction, - identifier, - `digested fragments`, factor_key = T) %>%
+  mutate(config = "amin")
+
+fragment_stats <- rbind(fragment_stats_new, fragment_stats_amin) %>%
+  mutate(nice_label = sprintf("%s\n(n= %s)", identifier, format(`digested fragments`, big.mark = " "))) %>%
+  mutate_at(c("config", "nice_label"), as.factor)
+
+# plot the wrangled data
+ggplot(read_stats, aes(x = identifier, y = fraction, fill = event_type)) +
   geom_col(position = "stack") +
-  scale_y_continuous(expand = c(0, 0), labels = percent) +
+  scale_y_continuous(expand = c(0, 0, 0, 0.1), labels = percent) +
   geom_text(
   aes(label = sprintf("%.1f%%", fraction * 100)),
-  hjust = 0.5,
   position = position_stack(vjust = .5),
   col = "white",
   fontface = "bold"
+  ) +
+  geom_text(
+  aes(y = 1, label = format(`raw reads`, big.mark = " ")),
+  vjust = - 0.25
   ) +
   theme_pubr(legend = "top") +
   theme(
@@ -212,28 +247,30 @@ ggplot(read_stats, aes(x = sprintf("%s\n(%d)", identifier, `raw reads`), y = fra
   scale_fill_brewer(palette = "Dark2") +
   labs(
   title = "Initial read filtering",
-  x = "Dataset",
+  x = "",
   y = "Fraction of raw reads"
   )
-ggplot(fragment_stats, aes(x = sprintf("%s\n(%d)", identifier, `digested fragments`), y = fraction, fill = event_type)) +
-  geom_col(position = "stack") +
-  scale_y_continuous(expand = c(0, 0), labels = percent) +
-  geom_text(
-  aes(label = sprintf("%.1f%%", fraction * 100)),
-  hjust = 0.5,
-  position = position_stack(vjust = .5),
-  col = "white",
-  fontface = "bold"
-  ) +
-  theme_pubr() +
+
+ggplot(subset(fragment_stats, config == "amin"), aes(x = nice_label, y = fraction, fill = event_type, color = event_type)) +
+  geom_col(position = position_dodge2(padding = 0), alpha = 0.3) +
+  geom_col(data = subset(fragment_stats, config == "new"), position = position_dodge2(padding = 0.6), alpha = 0.7) +
+  scale_y_continuous(expand = c(0, 0, 0, 0.1), labels = percent, breaks = pretty_breaks()) +
+  facet_grid(. ~ nice_label, scales = "free_x") +
+  theme_pubr(border = T, legend = "bottom") +
   theme(
-  plot.title = element_text(face = "bold", hjust = 0.5)
+  plot.title = element_text(face = "bold", hjust = 0.5),
+  axis.title.x = element_blank(),
+  axis.ticks.x = element_blank(),
+  axis.text.x = element_blank(),
+  panel.spacing = unit(0, units = "mm"),
+  strip.background = element_rect(fill = "gray98", colour = "black")
   ) +
-  scale_fill_brewer(palette = "Dark2") +
+  scale_fill_brewer(palette = "Set1") +
+  scale_color_brewer(palette = "Set1") +
   labs(
   title = "Initial fragment alignment",
-  x = "Dataset",
-  y = "Fraction of created fragments"
+  x = "",
+  y = "Fraction of n created fragments"
   )
 
 readstat_plot <- ggplot(read_stats.m, aes(x = identifier, y = value, fill = variable)) +
@@ -265,15 +302,26 @@ readstat_plot <- ggplot(read_stats.m, aes(x = identifier, y = value, fill = vari
   scale_fill_brewer(palette = "Set1")
 readstat_plot
 
+#####
 # MergeMap MAPQ scores
-mergemap <- read.delim("/data0/thom/mergemap_splitmap/mergemap.csv", stringsAsFactors=FALSE)
-ggplot(mergemap, aes(x=mapq)) +
-  geom_histogram(binwidth = 1, aes(y=..density..)) +
-  scale_y_continuous(expand = c(0,0), labels=percent) +
-  theme_classic() +
-  scale_fill_brewer(palette = "Dark2") +
+#####
+mergemap_mq_cutoff <- 20
+mergemap <- read.delim("/data0/thom/splitmap/mergemap.csv")
+ggplot(mergemap, aes(x = mapq, fill = sample)) +
+  geom_histogram(binwidth = 1, aes(y = ..count.. / sum(..count..), fill = NULL), position = "stack", colour = "black", size = 1.5) +
+  geom_histogram(binwidth = 1, aes(y = ..count.. / sum(..count..)), position = "stack") +
+  scale_x_continuous(breaks = pretty_breaks()) +
+  scale_y_continuous(expand = c(0, 0, 0, 0.005), labels = percent, breaks = pretty_breaks()) +
+  geom_vline(xintercept = mergemap_mq_cutoff, linetype = "dashed") +
+  annotate("text", x = mergemap_mq_cutoff, y = 0.1, label = sprintf("%.1f%% above threshold", sum(mergemap$mapq >= mergemap_mq_cutoff) / nrow(mergemap) * 100), vjust = - 0.5, hjust = 0, angle = 270, fontface = "bold", color = "darkgreen") +
+#  annotate("text", x = mergemap_mq_cutoff, y = 0.07, label = sprintf("%.1f%% <", sum(mergemap$mapq < mergemap_mq_cutoff) / nrow(mergemap) * 100), vjust = 0.5, hjust = 1.1, fontface = "bold", color = "darkred") +
+  theme_pubr(legend = "right") +
   labs(
-    title = sprintf("Mapping quality of %d MergeMap alignments", nrow(mergemap)),
+  title = sprintf("Mapping quality of %s MergeMap alignments", format(nrow(mergemap), big.mark = " ")),
     x = "MAPQ",
     y = "Fraction of alignments"
-  )
+  ) +
+  theme(
+  plot.title = element_text(face = "bold", hjust = 0.5)
+  ) +
+  scale_fill_brewer(palette = "PuRd")
