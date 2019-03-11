@@ -171,7 +171,7 @@ class WeightedLinkedListNode(object):
             .format(self.node_id, self.get_weight(), self.ref_name, self.fragment_start, self.fragment_end)
 
 
-def read_sam(fname, mapq_cutoff=0, sam_region="."):
+def read_sam(fname, mapq_cutoff=0):
     """
     Parse reads from a SAM/BAM file and Create a WeightedLinkedList per read.
 
@@ -191,7 +191,7 @@ def read_sam(fname, mapq_cutoff=0, sam_region="."):
 
     samfile = pysam.AlignmentFile(fname, "r")
     logging.info("Reading alignment file %s ...", fname)
-    for read in samfile.fetch(region=sam_region):
+    for read in samfile:
         if read.flag & 0x4 != 0:
             logging.debug("Skipping %s (unaligned)", read.qname)
             continue
@@ -277,11 +277,9 @@ if __name__ == "__main__":
                         metavar="CUTOFF", action="store", type=int, default=1000)
     parser.add_argument("-q", "--minimum-mapq", help="Minimum MAPQ that a fragment needs to have.", metavar="MQ",
                         action="store", type=int, default=1)
-    parser.add_argument("-r", "--region", help="Limit read to specific region.", metavar="REGION",
-                        action="store", type=str, default=".")
     args = parser.parse_args()
 
-    mapped_reads = read_sam(args.input_sam, args.minimum_mapq, args.region)
+    mapped_reads = read_sam(args.input_sam, args.minimum_mapq)
     arr = merge_and_count_freq(mapped_reads, args.distance_cutoff)
     if args.csv_output is not None:
         export_mapped_regions(mapped_reads, args.csv_output)
