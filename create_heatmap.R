@@ -8,7 +8,7 @@ suppressPackageStartupMessages({
 })
 
 # load data
-df <- read.csv("/data0/thom/mc4c_aligntest2/all_fragments.csv", sep = "\t", header = T)
+df <- read.csv("/data0/thom/mc4c_aligntest2/filtered/fragments.csv", sep = "\t", header = T)
 mtx <- data.matrix(df[, - 1])
 row.names(mtx) <- df[, 1]
 colnames(mtx) <- 1 : ncol(mtx)

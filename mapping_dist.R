@@ -205,8 +205,8 @@ read_stats <- mc4c_stats %>%
   gather(event_type, fraction, - identifier, - `raw reads`, factor_key = T)
 
 fragment_stats_new <- mc4c_stats %>%
-  mutate(fragment_hq_rate = `mq60 fragments` / `digested fragments`) %>%
-  mutate(fragment_lq_rate = `mapped fragments` / `digested fragments` - fragment_hq_rate) %>%
+  mutate(fragment_hq_rate = `mq60 best` / `digested fragments`) %>%
+  mutate(fragment_lq_rate = `mapped best` / `digested fragments` - fragment_hq_rate) %>%
   mutate(fragment_dropped_rate = 1 - fragment_lq_rate - fragment_hq_rate) %>%
   select(identifier, `digested fragments`, fragment_hq_rate, fragment_lq_rate, fragment_dropped_rate) %>%
   mutate_at(c("identifier"), as.factor) %>%
@@ -224,9 +224,33 @@ fragment_stats_amin <- mc4c_stats %>%
 
 fragment_stats <- rbind(fragment_stats_new, fragment_stats_amin) %>%
   mutate(nice_label = sprintf("%s\n(n= %s)", identifier, format(`digested fragments`, big.mark = " "))) %>%
-  mutate_at(c("config", "nice_label"), as.factor)
+  mutate_at(c("config", "nice_label"), as.factor) %>%
+  rename(`Alignment` = event_type)
+levels(fragment_stats$Alignment) <- c("Aligned (MQ=60)", "Aligned (MQ<60)", "Unaligned")
 
 # plot the wrangled data
+ggplot(subset(fragment_stats, config == "amin"), aes(x = nice_label, y = fraction, fill = `Alignment`, color = `Alignment`)) +
+  geom_col(position = position_dodge2(padding = 0), alpha = 0.3) +
+  geom_col(data = subset(fragment_stats, config == "new"), position = position_dodge2(padding = 0.6), alpha = 0.7) +
+  scale_y_continuous(expand = c(0, 0, 0, 0.1), labels = percent, breaks = pretty_breaks()) +
+  facet_grid(. ~ nice_label, scales = "free_x") +
+  theme_pubr(border = T, legend = "bottom") +
+  theme(
+  plot.title = element_text(face = "bold", hjust = 0.5),
+  axis.title.x = element_blank(),
+  axis.ticks.x = element_blank(),
+  axis.text.x = element_blank(),
+  panel.spacing = unit(0, units = "mm"),
+  strip.background = element_rect(fill = "gray98", colour = "black")
+  ) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_color_brewer(palette = "Set1") +
+  labs(
+  title = "Fragment alignment performance",
+  x = "",
+  y = "Fraction of n created fragments"
+  )
+
 ggplot(read_stats, aes(x = identifier, y = fraction, fill = event_type)) +
   geom_col(position = "stack") +
   scale_y_continuous(expand = c(0, 0, 0, 0.1), labels = percent) +
@@ -249,28 +273,6 @@ ggplot(read_stats, aes(x = identifier, y = fraction, fill = event_type)) +
   title = "Initial read filtering",
   x = "",
   y = "Fraction of raw reads"
-  )
-
-ggplot(subset(fragment_stats, config == "amin"), aes(x = nice_label, y = fraction, fill = event_type, color = event_type)) +
-  geom_col(position = position_dodge2(padding = 0), alpha = 0.3) +
-  geom_col(data = subset(fragment_stats, config == "new"), position = position_dodge2(padding = 0.6), alpha = 0.7) +
-  scale_y_continuous(expand = c(0, 0, 0, 0.1), labels = percent, breaks = pretty_breaks()) +
-  facet_grid(. ~ nice_label, scales = "free_x") +
-  theme_pubr(border = T, legend = "bottom") +
-  theme(
-  plot.title = element_text(face = "bold", hjust = 0.5),
-  axis.title.x = element_blank(),
-  axis.ticks.x = element_blank(),
-  axis.text.x = element_blank(),
-  panel.spacing = unit(0, units = "mm"),
-  strip.background = element_rect(fill = "gray98", colour = "black")
-  ) +
-  scale_fill_brewer(palette = "Set1") +
-  scale_color_brewer(palette = "Set1") +
-  labs(
-  title = "Initial fragment alignment",
-  x = "",
-  y = "Fraction of n created fragments"
   )
 
 readstat_plot <- ggplot(read_stats.m, aes(x = identifier, y = value, fill = variable)) +
@@ -325,3 +327,26 @@ ggplot(mergemap, aes(x = mapq, fill = sample)) +
   plot.title = element_text(face = "bold", hjust = 0.5)
   ) +
   scale_fill_brewer(palette = "PuRd")
+
+#####
+# GC content
+#####
+gc_content <- read.delim("/data0/thom/splitmap/gc_content.csv")
+ggplot(gc_content, aes(x = gc_content, fill = source)) +
+  geom_density(alpha = 0.5, aes(y = ..scaled..)) +
+  scale_x_continuous(labels = percent, breaks = seq(0, 1, 0.25), limits = c(0, 1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  theme_pubr(legend = "top") +
+  labs(
+  title = "GC-content difference between aligned and unaligned reads",
+  x = "GC-content",
+  y = ""
+  ) +
+  theme(
+  plot.title = element_text(face = "bold", hjust = 0.5),
+  axis.title.y = element_blank(),
+  axis.ticks.y = element_blank(),
+  axis.text.y = element_blank(),
+  axis.line.y = element_blank()
+  ) +
+  scale_fill_brewer(palette = "Dark2")
