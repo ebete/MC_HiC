@@ -11,9 +11,6 @@
 params.input = "*.fa.gz"
 params.output_dir = "./"
 params.script_dir = "/home/thom/PycharmProjects/McHiC"
-// notify on completion
-notification.enabled = true
-notification.to = "t.griffioen@hubrecht.eu"
 
 // Queue channels
 raw_files = Channel

@@ -15,9 +15,6 @@ params.read_min = "1500"
 params.read_max = "8000"
 params.output_dir = "./"
 params.script_dir = "/home/thom/PycharmProjects/McHiC"
-// notify on completion
-notification.enabled = true
-notification.to = "t.griffioen@hubrecht.eu"
 
 
 // Queue channels
@@ -50,7 +47,7 @@ process createNonSplit {
 	cpus 1
 	memory "250MB"
 	tag "${dataset}"
-	publishDir "${params.output_dir}", mode: "copy", overwrite: true
+	publishDir "${params.output_dir}", mode: "copy", overwrite: true, pattern: "*.fa.gz"
 
 	input:
 	set dataset, file(fq_file) from filtered_fq1
@@ -66,7 +63,7 @@ process createDigested {
 	cpus 1
 	memory "250MB"
 	tag "${dataset}"
-	publishDir "${params.output_dir}", mode: "copy", overwrite: true
+	publishDir "${params.output_dir}", mode: "copy", overwrite: true, pattern: "*.fa.gz"
 
 	input:
 	set dataset, file(fq_file) from filtered_fq2
