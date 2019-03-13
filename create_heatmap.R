@@ -14,14 +14,15 @@ row.names(mtx) <- df[, 1]
 colnames(mtx) <- 1 : ncol(mtx)
 # remove first few columns
 merge_from <- 8
+remove_to <- 2
 merged_tail <- apply(mtx[, merge_from : ncol(mtx)], 1, sum)
 mtx.subset <- cbind(mtx[, - (merge_from : ncol(mtx))], "8+" = merged_tail)
-mtx.subset <- mtx.subset[, - (1 : 2)]
+mtx.subset <- mtx.subset[, - (1 : remove_to)]
 
 # sort based on total mapped fragments
-mtx.scores <- matrix(mtx[, 1])
-for (i in 2 : ncol(mtx)) {
-  mtx.scores <- mtx.scores + mtx[, i] * i
+mtx.scores <- matrix(mtx.subset[, 1]) * (remove_to + 1)
+for (i in 2 : ncol(mtx.subset)) {
+  mtx.scores <- mtx.scores + mtx.subset[, i] * (i + remove_to)
 }
 mtx.subset <- mtx.subset[order(mtx.scores[, 1], decreasing = T),]
 
@@ -38,6 +39,6 @@ cellnote = mtx.subset,
 notecol = "black",
   margins = c(4, 20),
   col = col_palette(15),
-main = "Mapped fragments per read for different alignments",
+main = "Aligned fragments per read for different alignment strategies",
 xlab = "Fragments per read"
 )
