@@ -16,7 +16,7 @@ params.script_dir = "/home/thom/PycharmProjects/McHiC"
 raw_files = Channel
 	.fromPath(params.input, checkIfExists: true)
 	.map { file -> tuple(file.simpleName, file) }
-extend_len = [ 50, 100, 150, 200, 250, 300 ]
+extend_len = [ 50 ]
 
 
 // Align digested reads
@@ -33,7 +33,7 @@ process mapFragments {
 
 	script:
 """
-bwa mem -x ont2d -t ${task.cpus} -k 10 -q "/data0/thom/mm9/mm9.fa" "${fa_file}" \
+bwa mem -t ${task.cpus} -k 14 -A 1 -B 4 -O 6 -E 1 -w 50 -T 5 -q "/data0/thom/mm9/mm9.fa" "${fa_file}" \
 	| samtools view -q 1 -F 260 -b \
 	| samtools sort -o "aligned.bam"
 """
@@ -82,14 +82,15 @@ process makeSplitmapReads {
 	label "multicore"
 	memory { 2.GB * task.cpus }
 	tag "${dataset}"
-	publishDir "${params.output_dir}", mode: "copy", overwrite: true, pattern: "*.csv"
+	publishDir "${params.output_dir}", mode: "copy", overwrite: true
 
 	input:
 	set dataset, file(mappable), file(unmappable), file(chimeric) from reads_excerpt1
 	each extension from extend_len
 
 	output:
-	file "${dataset}_${extension}.csv" into splitmap_perf
+	file "${dataset}_${extension}_splitmap.csv" into splitmap_perf
+	file "${dataset}_${extension}_splitmap.bam" into splitmap_bam
 
 	script:
 """
@@ -98,12 +99,11 @@ python3 "${params.script_dir}/splitmap.py" -m ${extension} "${chimeric}" "${mapp
 	> "splitmap.fa.gz"
 
 bwa mem -x ont2d -t ${task.cpus} -k 10 -q "/data0/thom/mm9/mm9.fa" "splitmap.fa.gz" \
-	| samtools view -b -q 1 \
-	| samtools sort \
-	> "splitmap.bam"
+	| samtools view -b \
+	| samtools sort -o "${dataset}_${extension}_splitmap.bam"
 
-python3 "${params.script_dir}/splitmap_merge.py" "${chimeric}" "splitmap.bam" \
-	> "${dataset}_${extension}.csv"
+python3 "${params.script_dir}/splitmap_merge.py" "${chimeric}" "${dataset}_${extension}_splitmap.bam" \
+	> "${dataset}_${extension}_splitmap.csv"
 """
 }
 
@@ -112,13 +112,14 @@ process makeMergemapReads {
 	label "multicore"
 	memory { 2.GB * task.cpus }
 	tag "${dataset}"
-	publishDir "${params.output_dir}", mode: "copy", overwrite: true, pattern: "*.csv"
+	publishDir "${params.output_dir}", mode: "copy", overwrite: true
 
 	input:
 	set dataset, file(mappable), file(unmappable), file(chimeric) from reads_excerpt2
 
 	output:
 	file "${dataset}_mergemap.csv" into mergemap_perf
+	file "${dataset}_mergemap.bam" into mergemap_bam
 
 	script:
 """
@@ -127,11 +128,10 @@ python3 "${params.script_dir}/mergemap.py" "${chimeric}" "${mappable}" \
 	> "mergemap.fa.gz"
 
 bwa mem -x ont2d -t ${task.cpus} -k 10 -q "/data0/thom/mm9/mm9.fa" "mergemap.fa.gz" \
-	| samtools view -b -q 1 \
-	| samtools sort \
-	> "mergemap.bam"
+	| samtools view -b \
+	| samtools sort -o "${dataset}_mergemap.bam"
 
-samtools view "mergemap.bam" \
+samtools view "${dataset}_mergemap.bam" \
 	| awk 'BEGIN{FS="\\t"; OFS="\\t"; print "read_id","mapq";} {print \$1,\$5}' \
 	> "${dataset}_mergemap.csv"
 """
