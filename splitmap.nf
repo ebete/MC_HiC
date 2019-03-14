@@ -11,6 +11,9 @@
 params.input = "*.fa.gz"
 params.output_dir = "./"
 params.script_dir = "/home/thom/PycharmProjects/McHiC"
+params.bwa = "-k 14 -A 1 -B 4 -O 6 -E 1 -w 50 -T 5 -q"
+params.ref = "/data0/thom/mm9/mm9.fa"
+params.mq = 1
 
 // Queue channels
 raw_files = Channel
@@ -33,8 +36,8 @@ process mapFragments {
 
 	script:
 """
-bwa mem -t ${task.cpus} -k 14 -A 1 -B 4 -O 6 -E 1 -w 50 -T 5 -q "/data0/thom/mm9/mm9.fa" "${fa_file}" \
-	| samtools view -q 1 -F 260 -b \
+bwa mem -t ${task.cpus} ${params.bwa} "${params.ref}" "${fa_file}" \
+	| samtools view -q ${params.mq} -F 260 -b \
 	| samtools sort -o "aligned.bam"
 """
 }
@@ -98,7 +101,7 @@ python3 "${params.script_dir}/splitmap.py" -m ${extension} "${chimeric}" "${mapp
 	| pigz -p ${task.cpus} \
 	> "splitmap.fa.gz"
 
-bwa mem -x ont2d -t ${task.cpus} -k 10 -q "/data0/thom/mm9/mm9.fa" "splitmap.fa.gz" \
+bwa mem -t ${task.cpus} ${params.bwa} "${params.ref}" "splitmap.fa.gz" \
 	| samtools view -b \
 	| samtools sort -o "${dataset}_${extension}_splitmap.bam"
 
@@ -127,7 +130,7 @@ python3 "${params.script_dir}/mergemap.py" "${chimeric}" "${mappable}" \
 	| pigz -p ${task.cpus} \
 	> "mergemap.fa.gz"
 
-bwa mem -x ont2d -t ${task.cpus} -k 10 -q "/data0/thom/mm9/mm9.fa" "mergemap.fa.gz" \
+bwa mem -t ${task.cpus} ${params.bwa} "${params.ref}" "mergemap.fa.gz" \
 	| samtools view -b \
 	| samtools sort -o "${dataset}_mergemap.bam"
 
