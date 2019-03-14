@@ -15,7 +15,7 @@ def compare_original_to_splitmap(original_sam, splitmap_sam):
     logging.info("Comparing original alignments to splitmapped alignments ...")
     # print("chr", "start", "end", "read_id", "src", sep="\t")
     # print("intersect", "first_run", "second_run", sep="\t")
-    print("read_id", "fragment_id", "event", sep="\t")
+    print("read_id", "fragment_id", "event", "dMQ", "dLEN", sep="\t")
     for read_id, orig_fragments in original_metadata_dict.items():
         first_fragments = set(orig_fragments.keys())
         if read_id not in splitmap_metadata_dict:
@@ -50,6 +50,8 @@ def compare_original_to_splitmap(original_sam, splitmap_sam):
         second_only = second_fragments - first_fragments  # fragments that didn't map the first time (should be empty)
         intersecting = first_fragments & second_fragments  # fragments that mapped both times
 
+        max_dmq = 0
+        max_dlen = 0
         for frid in intersecting:
             is_improved = []
             for lookup in fragment_lookup[frid]:
@@ -75,15 +77,17 @@ def compare_original_to_splitmap(original_sam, splitmap_sam):
                 else:
                     continue
 
+                max_dlen = max(max_dlen, unclipped_increase)
+                max_dmq = max(max_dmq, mapq_increase)
                 is_improved.append(positions_overlap and (mapq_increase > 5 or unclipped_increase > 10))
 
             if len(is_improved) > 0:
-                print(read_id, frid, "improved" if (True in is_improved) else "degraded", sep="\t")
+                print(read_id, frid, "improved" if (True in is_improved) else "degraded", max_dmq, max_dlen, sep="\t")
 
         for frid in first_only:
-            print(read_id, frid, "missing", sep="\t")
+            print(read_id, frid, "missing", max_dmq, max_dlen, sep="\t")
         for frid in second_only:
-            print(read_id, frid, "new", sep="\t")
+            print(read_id, frid, "new", max_dmq, max_dlen, sep="\t")
 
 
 def equal_positions(first_pos, second_pos, max_dist=0):
