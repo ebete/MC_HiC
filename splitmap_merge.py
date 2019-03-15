@@ -50,9 +50,9 @@ def compare_original_to_splitmap(original_sam, splitmap_sam):
         second_only = second_fragments - first_fragments  # fragments that didn't map the first time (should be empty)
         intersecting = first_fragments & second_fragments  # fragments that mapped both times
 
-        max_dmq = 0
-        max_dlen = 0
         for frid in intersecting:
+            max_dmq = 0
+            max_dlen = 0
             is_improved = []
             for lookup in fragment_lookup[frid]:
                 operation = splitmap_fragments[lookup]["Src.Op"]

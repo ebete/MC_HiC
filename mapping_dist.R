@@ -158,11 +158,11 @@ mapdiff_plot
 # plot mapping performance
 #####
 perf <- data.frame(sample = NULL, size = NULL, improved = NULL, total = NULL)
-for (f in Sys.glob("/data0/thom/splitmap/*_digested_[0-9]*.csv")) {
+for (f in Sys.glob("/data0/thom/splitmap/*_digested_50_splitmap.csv")) {
   df <- read.delim(f)
   fname <- strsplit(basename(f), ".", fixed = T)[[1]][1]
-  sample <- strsplit(fname, "_", fixed = T)[[1]][2]
-  extend <- strsplit(fname, "_", fixed = T)[[1]][4]
+  sample <- strsplit(fname, "_", fixed = T)[[1]][1]
+  extend <- strsplit(fname, "_", fixed = T)[[1]][3]
   perf <- rbind(perf, data.frame(
   sample = sample,
   size = extend,
@@ -172,23 +172,108 @@ for (f in Sys.glob("/data0/thom/splitmap/*_digested_[0-9]*.csv")) {
 }
 rm(df)
 perf$size <- reorder(perf$size, as.numeric(levels(perf$size))[perf$size])
+perf <- perf %>%
+  group_by(sample) %>%
+  arrange(size) %>%
+  mutate(gain = improved - lag(improved, default = 0)) %>%
+  ungroup()
 
-ggplot(perf, aes(x = size, y = improved / total, group = sample, colour = sample)) +
-  geom_line() +
+splitmap_plot <- ggplot(perf[perf$size == 50, ], aes(x = sample, y = improved / total, fill = sample)) +
+  geom_col(position = "stack", colour = "black") +
+  stat_identity(geom = "text", aes(label = sprintf("%.0f k", improved / 1e3)), vjust = -1, fontface = "bold") +
   labs(
-  title = "Second iteration mapping performance",
-  subtitle = "Mapping performance of the merged fragments",
-  x = "Dataset",
-  y = "Fraction of cases"
+    title = "SplitMap",
+    x = "Dataset",
+    y = "Fragments that passed the filter"
   ) +
-  scale_y_continuous(labels = scales::percent, expand = c(0, 0)) +
+  scale_y_continuous(labels = scales::percent, expand = c(0, 0, 0, 0.02), breaks = pretty_breaks()) +
   theme_pubr(legend = "right") +
   theme(
-  plot.title = element_text(face = "bold", hjust = 0.5),
-  axis.text.x = element_text(angle = 0, vjust = 0.5)
+    plot.title = element_text(hjust = 0.5),
+    axis.text.x = element_text(angle = -30, vjust = 1)
   ) +
-  scale_colour_brewer(palette = "Set1")
-map_perf
+  scale_fill_brewer(palette = "PuRd")
+splitmap_plot
+
+#####
+# MergeMap MAPQ scores
+#####
+mergemap_mq_cutoff <- 20
+mergemap <- read.delim("/data0/thom/splitmap/mergemap.csv")
+# mergemap_plot <- ggplot(mergemap, aes(x = mapq, fill = sample)) +
+#   geom_histogram(binwidth = 1, aes(y = ..count.. / sum(..count..), fill = NULL), position = "stack", colour = "black", size = 1.5) +
+#   geom_histogram(binwidth = 1, aes(y = ..count.. / sum(..count..)), position = "stack") +
+#   scale_x_continuous(breaks = pretty_breaks()) +
+#   scale_y_continuous(expand = c(0, 0, 0, 0.005), labels = percent, breaks = pretty_breaks()) +
+#   geom_vline(xintercept = mergemap_mq_cutoff, linetype = "dashed") +
+#   annotate("text", x = mergemap_mq_cutoff, y = 0.1, label = sprintf("%.1f%% above threshold", sum(mergemap$mapq >= mergemap_mq_cutoff) / nrow(mergemap) * 100), vjust = - 0.5, hjust = 0, angle = 270, fontface = "bold", color = "darkgreen") +
+#   #  annotate("text", x = mergemap_mq_cutoff, y = 0.07, label = sprintf("%.1f%% <", sum(mergemap$mapq < mergemap_mq_cutoff) / nrow(mergemap) * 100), vjust = 0.5, hjust = 1.1, fontface = "bold", color = "darkred") +
+#   theme_pubr(legend = "right") +
+#   labs(
+#     #    title = sprintf("Mapping quality of %s MergeMap alignments", format(nrow(mergemap), big.mark = " ")),
+#     title = "MergeMap",
+#     x = "MAPQ",
+#     y = "Fraction of alignments"
+#   ) +
+#   theme(
+#     plot.title = element_text(hjust = 0.5)
+#   ) +
+#   scale_fill_brewer(palette = "PuRd")
+# mergemap_plot
+
+mergemap_summary <- mergemap %>%
+  filter(mapq >= mergemap_mq_cutoff) %>%
+  mutate(bins = as.factor(ifelse(mapq < 60, "20-59", "60+"))) %>%
+  group_by(sample, bins) %>%
+  summarise(totals = n()) %>%
+  mutate(scaled = totals/sum(totals)) %>%
+  ungroup()
+
+mergemap_heatmap <- ggplot(mergemap_summary, aes(y = sample, x = bins, fill = scaled)) +
+  geom_tile(show.legend = F) +
+  stat_identity(geom = "text", aes(label = totals), color = "white", fontface = "bold") +
+  scale_x_discrete(expand = c(0 ,0)) +
+  scale_y_discrete(expand = c(0 ,0)) +
+  labs(
+    title = "MergeMap",
+    x = "MAPQ",
+    y = "Dataset"
+  ) +
+  theme_pubr(border = T, legend = "left") +
+  theme(
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  scale_fill_gradient2(low = "#e7e1ef", mid = "#c994c7", high = "#dd1c77")
+mergemap_heatmap
+
+mergemap_bars <- mergemap_summary %>%
+  group_by(sample) %>%
+  mutate(totals = sum(totals)) %>%
+  distinct(sample, totals) %>%
+  ungroup() %>%
+  mutate(input_records = c(173924, 91080, 547758, 49052, 13547, 106856, 66290, 133609, 82380)) %>%
+  mutate(fraction = totals / input_records) %>%
+  ggplot(aes(x = sample, y = fraction, fill = sample)) +
+  geom_col(position = "stack", color = "black", width = 1) +
+  stat_identity(geom = "text", aes(label = sprintf("%.1f k", totals / 1e3)), vjust = 0.5, hjust = -0.1, fontface = "bold") +
+  scale_y_continuous(expand = c(0 ,0, 0.3, 0), labels = function(x) { sprintf("%.1f%%", x * 100) }, breaks = seq(0.0, 0.03, 0.01)) +
+  labs(
+    title = "",
+    x = "",
+    y = "Aligned fragments"
+  ) +
+  coord_flip() +
+  theme_pubr(legend = "none") +
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  ) +
+  scale_fill_brewer(palette = "PuRd")
+mergemap_bars
+
+mm_sm <- ggarrange(splitmap_plot, mergemap_heatmap, mergemap_bars, ncol = 3, common.legend = T, legend = "bottom", labels = c("(1)", "(2)", "(3)"), label.x = 0.05, align = "h", widths = c(12, 6, 6))
+annotate_figure(mm_sm, top = text_grob("Second-pass mapping performance", face = "bold", size = 18))
 
 ##################
 # raw read stats #
@@ -304,29 +389,6 @@ readstat_plot <- ggplot(read_stats.m, aes(x = identifier, y = value, fill = vari
   scale_fill_brewer(palette = "Set1")
 readstat_plot
 
-#####
-# MergeMap MAPQ scores
-#####
-mergemap_mq_cutoff <- 20
-mergemap <- read.delim("/data0/thom/splitmap/mergemap.csv")
-ggplot(mergemap, aes(x = mapq, fill = sample)) +
-  geom_histogram(binwidth = 1, aes(y = ..count.. / sum(..count..), fill = NULL), position = "stack", colour = "black", size = 1.5) +
-  geom_histogram(binwidth = 1, aes(y = ..count.. / sum(..count..)), position = "stack") +
-  scale_x_continuous(breaks = pretty_breaks()) +
-  scale_y_continuous(expand = c(0, 0, 0, 0.005), labels = percent, breaks = pretty_breaks()) +
-  geom_vline(xintercept = mergemap_mq_cutoff, linetype = "dashed") +
-  annotate("text", x = mergemap_mq_cutoff, y = 0.1, label = sprintf("%.1f%% above threshold", sum(mergemap$mapq >= mergemap_mq_cutoff) / nrow(mergemap) * 100), vjust = - 0.5, hjust = 0, angle = 270, fontface = "bold", color = "darkgreen") +
-#  annotate("text", x = mergemap_mq_cutoff, y = 0.07, label = sprintf("%.1f%% <", sum(mergemap$mapq < mergemap_mq_cutoff) / nrow(mergemap) * 100), vjust = 0.5, hjust = 1.1, fontface = "bold", color = "darkred") +
-  theme_pubr(legend = "right") +
-  labs(
-  title = sprintf("Mapping quality of %s MergeMap alignments", format(nrow(mergemap), big.mark = " ")),
-    x = "MAPQ",
-    y = "Fraction of alignments"
-  ) +
-  theme(
-  plot.title = element_text(face = "bold", hjust = 0.5)
-  ) +
-  scale_fill_brewer(palette = "PuRd")
 
 #####
 # GC content

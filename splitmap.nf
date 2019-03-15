@@ -94,14 +94,15 @@ process makeSplitmapReads {
 	output:
 	file "${dataset}_${extension}_splitmap.csv" into splitmap_perf
 	file "${dataset}_${extension}_splitmap.bam" into splitmap_bam
+	file "${dataset}_${extension}_splitmap.fa.gz" into splitmap_fasta
 
 	script:
 """
 python3 "${params.script_dir}/splitmap.py" -m ${extension} "${chimeric}" "${mappable}" \
 	| pigz -p ${task.cpus} \
-	> "splitmap.fa.gz"
+	> "${dataset}_${extension}_splitmap.fa.gz"
 
-bwa mem -t ${task.cpus} ${params.bwa} "${params.ref}" "splitmap.fa.gz" \
+bwa mem -t ${task.cpus} ${params.bwa} "${params.ref}" "${dataset}_${extension}_splitmap.fa.gz" \
 	| samtools view -b \
 	| samtools sort -o "${dataset}_${extension}_splitmap.bam"
 
@@ -123,14 +124,15 @@ process makeMergemapReads {
 	output:
 	file "${dataset}_mergemap.csv" into mergemap_perf
 	file "${dataset}_mergemap.bam" into mergemap_bam
+	file "${dataset}_mergemap.fa.gz" into mergemap_fasta
 
 	script:
 """
 python3 "${params.script_dir}/mergemap.py" "${chimeric}" "${mappable}" \
 	| pigz -p ${task.cpus} \
-	> "mergemap.fa.gz"
+	> "${dataset}_mergemap.fa.gz"
 
-bwa mem -t ${task.cpus} ${params.bwa} "${params.ref}" "mergemap.fa.gz" \
+bwa mem -t ${task.cpus} ${params.bwa} "${params.ref}" "${dataset}_mergemap.fa.gz" \
 	| samtools view -b \
 	| samtools sort -o "${dataset}_mergemap.bam"
 
