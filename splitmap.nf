@@ -4,7 +4,7 @@
 /* Copyright (c) 2019 Thom Griffioen
  * MIT License
  *
- * Create FASTA files from FASTQ
+ * Perform initial alignment and run MergeMap/ExtendMap on resulting SAM file.
  */
 
  // default parameters

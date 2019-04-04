@@ -180,13 +180,13 @@ perf <- perf %>%
 
 splitmap_plot <- ggplot(perf[perf$size == 50, ], aes(x = sample, y = improved / total, fill = sample)) +
   geom_col(position = "stack", colour = "black") +
-  stat_identity(geom = "text", aes(label = sprintf("%.0f k", improved / 1e3)), vjust = -1, fontface = "bold") +
+  geom_label(aes(y = 0, label = sprintf("%.0f k", improved / 1e3)), vjust = - 0.5, fontface = "bold", color = "black", fill = "white") +
   labs(
-    title = "SplitMap",
+  title = "ExtendMap",
     x = "Dataset",
     y = "Fragments that passed the filter"
   ) +
-  scale_y_continuous(labels = scales::percent, expand = c(0, 0, 0, 0.02), breaks = pretty_breaks()) +
+  scale_y_continuous(labels = function(x) { percent(x, accuracy = 1)}, expand = c(0, 0, 0, 0.02), breaks = pretty_breaks()) +
   theme_pubr(legend = "right") +
   theme(
     plot.title = element_text(hjust = 0.5),
@@ -222,8 +222,10 @@ mergemap <- read.delim("/data0/thom/splitmap/mergemap.csv")
 # mergemap_plot
 
 mergemap_summary <- mergemap %>%
-  filter(mapq >= mergemap_mq_cutoff) %>%
-  mutate(bins = as.factor(ifelse(mapq < 60, "20-59", "60+"))) %>%
+  filter(mapq > 0) %>%
+  mutate(bins = cut(mapq, breaks = c(20, 60, Inf), labels = c("20-59", "60+"), right = F)) %>%
+  na.omit() %>%
+# mutate(bins = cut(mapq, breaks = c(-Inf, 20, 60, Inf), labels = c("1-19", "20-59", "60+"), right = F)) %>%
   group_by(sample, bins) %>%
   summarise(totals = n()) %>%
   mutate(scaled = totals/sum(totals)) %>%
@@ -255,12 +257,12 @@ mergemap_bars <- mergemap_summary %>%
   mutate(fraction = totals / input_records) %>%
   ggplot(aes(x = sample, y = fraction, fill = sample)) +
   geom_col(position = "stack", color = "black", width = 1) +
-  stat_identity(geom = "text", aes(label = sprintf("%.1f k", totals / 1e3)), vjust = 0.5, hjust = -0.1, fontface = "bold") +
-  scale_y_continuous(expand = c(0 ,0, 0.3, 0), labels = function(x) { sprintf("%.1f%%", x * 100) }, breaks = seq(0.0, 0.03, 0.01)) +
+  geom_label(aes(y = 0, label = sprintf("%.1f k", totals / 1e3)), vjust = 0.5, hjust = - 0.1, fontface = "bold", color = "black", fill = "white", alpha = 0.7) +
+  scale_y_continuous(expand = c(0 , 0, 0.3, 0), labels = function(x) { percent(x, accuracy = 1)}, breaks = seq(0.0, 0.03, 0.01)) +
   labs(
     title = "",
     x = "",
-    y = "Aligned fragments"
+  y = "Passed filter"
   ) +
   coord_flip() +
   theme_pubr(legend = "none") +
@@ -272,7 +274,7 @@ mergemap_bars <- mergemap_summary %>%
   scale_fill_brewer(palette = "PuRd")
 mergemap_bars
 
-mm_sm <- ggarrange(splitmap_plot, mergemap_heatmap, mergemap_bars, ncol = 3, common.legend = T, legend = "bottom", labels = c("(1)", "(2)", "(3)"), label.x = 0.05, align = "h", widths = c(12, 6, 6))
+mm_sm <- ggarrange(splitmap_plot, mergemap_heatmap, mergemap_bars, ncol = 3, common.legend = T, legend = "bottom", labels = c("(a)", "(b)", "(c)"), label.x = 0.05, align = "h", widths = c(12, 6, 6))
 annotate_figure(mm_sm, top = text_grob("Second-pass mapping performance", face = "bold", size = 18))
 
 ##################
@@ -290,7 +292,7 @@ read_stats <- mc4c_stats %>%
   gather(event_type, fraction, - identifier, - `raw reads`, factor_key = T)
 
 fragment_stats_new <- mc4c_stats %>%
-  mutate(fragment_hq_rate = `mq60 best` / `digested fragments`) %>%
+  mutate(fragment_hq_rate = `mq20 best` / `digested fragments`) %>%
   mutate(fragment_lq_rate = `mapped best` / `digested fragments` - fragment_hq_rate) %>%
   mutate(fragment_dropped_rate = 1 - fragment_lq_rate - fragment_hq_rate) %>%
   select(identifier, `digested fragments`, fragment_hq_rate, fragment_lq_rate, fragment_dropped_rate) %>%
@@ -299,7 +301,7 @@ fragment_stats_new <- mc4c_stats %>%
   mutate(config = "new")
 
 fragment_stats_amin <- mc4c_stats %>%
-  mutate(fragment_hq_rate = `mq60 amin` / `digested fragments`) %>%
+  mutate(fragment_hq_rate = `mq20 amin` / `digested fragments`) %>%
   mutate(fragment_lq_rate = `mapped amin` / `digested fragments` - fragment_hq_rate) %>%
   mutate(fragment_dropped_rate = 1 - fragment_lq_rate - fragment_hq_rate) %>%
   select(identifier, `digested fragments`, fragment_hq_rate, fragment_lq_rate, fragment_dropped_rate) %>%
@@ -311,7 +313,7 @@ fragment_stats <- rbind(fragment_stats_new, fragment_stats_amin) %>%
   mutate(nice_label = sprintf("%s\n(n= %s)", identifier, format(`digested fragments`, big.mark = " "))) %>%
   mutate_at(c("config", "nice_label"), as.factor) %>%
   rename(`Alignment` = event_type)
-levels(fragment_stats$Alignment) <- c("Aligned (MQ=60)", "Aligned (MQ<60)", "Unaligned")
+levels(fragment_stats$Alignment) <- c("Aligned (MQ>=20)", "Aligned (MQ<20)", "Unaligned")
 
 # plot the wrangled data
 ggplot(subset(fragment_stats, config == "amin"), aes(x = nice_label, y = fraction, fill = `Alignment`, color = `Alignment`)) +
