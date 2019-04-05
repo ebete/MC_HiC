@@ -13,6 +13,12 @@ import utils
 
 
 def get_mapped_reads(samfile):
+    """
+    Retrieves a set of all aligned read IDs.
+
+    :param samfile: Input SAM file.
+    :return: Set containing all aligned read IDs.
+    """
     read_ids = list()
 
     logging.info("Reading SAM file %s ...", samfile)
@@ -29,6 +35,14 @@ def get_mapped_reads(samfile):
 
 
 def extract_mapped_read_records(fasta_file, read_ids, mapped_out, unmapped_out):
+    """
+    Split a FASTA file into a FASTA with the aligned and one with the unaligned reads.
+
+    :param fasta_file: FASTA file used for creating the SAM file.
+    :param read_ids: Read IDs that were aligned
+    :param mapped_out: FASTA file to write the aligned reads to.
+    :param unmapped_out: FASTA file to write the unaligned reads to.
+    """
     logging.info("Getting FASTA records that have mapped fragments ...")
     mappable = 0
     records = 0
@@ -47,7 +61,7 @@ def extract_mapped_read_records(fasta_file, read_ids, mapped_out, unmapped_out):
 if __name__ == '__main__':
     utils.init_logger()
 
-    # get command line arguments
+    # get command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("input_sam", help="SAM/BAM file to extract mapped fragments from.", metavar="SAM",
                         action="store", type=str)
@@ -65,3 +79,5 @@ if __name__ == '__main__':
     finally:
         args.mapped.close()
         args.unmapped.close()
+
+    logging.shutdown()

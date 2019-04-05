@@ -3,7 +3,7 @@
 /* Copyright (c) 2019 Thom Griffioen
  * MIT License
  *
- * Run the Multi-Contact Hi-C pipeline
+ * Run the Multi-Contact 4C filtering pipeline
  */
 
 

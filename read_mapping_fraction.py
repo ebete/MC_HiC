@@ -5,6 +5,8 @@ import logging
 
 import pysam
 
+import utils
+
 
 def get_read_metadata(samfile):
     reads_metadata = dict()
@@ -16,18 +18,11 @@ def get_read_metadata(samfile):
                 logging.debug("Skipping %s (unaligned)", read.qname)
                 continue
 
-            metadata = read_header_to_dict(read.qname)
-            rdid = "{}_{}".format(metadata["Fq.Id"], metadata["Rd.Id"])
+            metadata = utils.read_header_to_dict(read.qname)
+            rdid = utils.make_read_id(metadata)
 
             reads_metadata.setdefault(rdid, list()).append(metadata)
     return reads_metadata
-
-
-def read_header_to_dict(header):
-    read_metadata = {}
-    for x in str(header).split(";"):
-        read_metadata[x.split(":")[0]] = x.split(":")[1]
-    return read_metadata
 
 
 def get_read_contiguity(metadata_collection):
@@ -105,9 +100,9 @@ def write_coverage_per_read(metadata_collection):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(message)s")
+    utils.init_logger()
 
-    # get command line arguments
+    # get command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("input_sam", help="SAM/BAM file.", metavar="SAM", action="store", type=str)
     args = parser.parse_args()
@@ -116,3 +111,5 @@ if __name__ == '__main__':
 
     get_read_contiguity(metadata)
     write_coverage_per_read(metadata)
+
+    logging.shutdown()

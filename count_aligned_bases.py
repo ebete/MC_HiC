@@ -10,6 +10,12 @@ import utils
 
 
 def count_matches(sam_input):
+    """
+    Get the total number of nucleotides in all reads that were used in alignment.
+
+    :param sam_input: SAM file to take the alignments from.
+    :return: Total number of bases used in aligning the fragments.
+    """
     logging.info("Counting aligned bases in %s ...", sam_input.name)
 
     total_bases = 0
@@ -20,6 +26,12 @@ def count_matches(sam_input):
 
 
 def aligned_bases(cigar_tuple):
+    """
+    Get the total number of operations that consume the query sequence.
+
+    :param cigar_tuple: CIGAR tuple from a pysam alignment.
+    :return: Number of query-consuming operations.
+    """
     aligned = 0
     for k, v in cigar_tuple:
         if k in {0, 1, 7, 8}:  # query consumed

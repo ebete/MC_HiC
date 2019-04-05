@@ -8,7 +8,13 @@ import utils
 
 
 def get_fragment_counts(csv_file):
-    logging.info("Extracting fragmentation of %s ...", csv_file)
+    """
+    Get the occurrence rate of fragments per read from a CSV file.
+
+    :param csv_file: CSV file to extract the mapped fragments from.
+    :return: Counts of fragments per read in a dictionary.
+    """
+    logging.info("Extracting read fragmentation from %s ...", csv_file)
     fragments_counts = dict()
 
     with open(csv_file, "r", newline="") as fin:
@@ -26,6 +32,12 @@ def get_fragment_counts(csv_file):
 
 
 def create_matrix(counts, limit=5):
+    """
+    Prints the fragment dict as a matrix to stdout.
+
+    :param counts: Dictionary containing counts of fragments per read
+    :param limit: Get the fragments per read up until this count
+    """
     print("file", "\t".join([str(i) for i in range(1, limit + 1)]), sep="\t")
     for fname, fragment_count in counts.items():
         row = fname
@@ -50,3 +62,5 @@ if __name__ == '__main__':
         counts_per_file[csvfile] = counts
         max_count = max(max_count, max(counts.keys()))
     create_matrix(counts_per_file, max_count)
+
+    logging.shutdown()

@@ -7,6 +7,8 @@ import pickle
 import numpy as np
 import pandas as pd
 
+import utils
+
 
 def load_site_index(fname):
     logging.info("Loading restriction site index %s ...", fname)
@@ -58,9 +60,9 @@ def get_sites_per_read(input_index, mapping_df, distance_cutoff=20):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG, format="[%(asctime)s]: %(message)s")
+    utils.init_logger()
 
-    # Get command argument
+    # get command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("input_index", help="Restriction site index file.", metavar="INDEX", action="store", type=str)
     parser.add_argument("input_csv", help="Fragment mapping file.", metavar="CSV", action="store", type=str)
@@ -97,3 +99,5 @@ if __name__ == '__main__':
     del site_interactions
     np.savetxt(args.output_csv, scatter_points,
                header="chr.1;pos.1;chr.2;pos.2", comments="", delimiter=";", encoding="utf-8", fmt="%s")
+
+    logging.shutdown()

@@ -80,8 +80,8 @@ python3 "${params.script_dir}/get_mapped_reads.py" "${chimeric}" "${raw_reads}" 
 """
 }
 
-// Run SplitMap read alignment
-process makeSplitmapReads {
+// Run ExtendMap read alignment
+process makeExtendMapReads {
 	label "multicore"
 	memory { 2.GB * task.cpus }
 	tag "${dataset}"
@@ -92,22 +92,22 @@ process makeSplitmapReads {
 	each extension from extend_len
 
 	output:
-	file "${dataset}_${extension}_splitmap.csv" into splitmap_perf
-	file "${dataset}_${extension}_splitmap.bam" into splitmap_bam
-	file "${dataset}_${extension}_splitmap.fa.gz" into splitmap_fasta
+	file "${dataset}_${extension}_extendmap.csv" into extendmap_perf
+	file "${dataset}_${extension}_extendmap.bam" into extendmap_bam
+	file "${dataset}_${extension}_extendmap.fa.gz" into extendmap_fasta
 
 	script:
 """
-python3 "${params.script_dir}/splitmap.py" -m ${extension} "${chimeric}" "${mappable}" \
+python3 "${params.script_dir}/extendmap.py" -m ${extension} "${chimeric}" "${mappable}" \
 	| pigz -p ${task.cpus} \
-	> "${dataset}_${extension}_splitmap.fa.gz"
+	> "${dataset}_${extension}_extendmap.fa.gz"
 
-bwa mem -t ${task.cpus} ${params.bwa} "${params.ref}" "${dataset}_${extension}_splitmap.fa.gz" \
+bwa mem -t ${task.cpus} ${params.bwa} "${params.ref}" "${dataset}_${extension}_extendmap.fa.gz" \
 	| samtools view -b \
-	| samtools sort -o "${dataset}_${extension}_splitmap.bam"
+	| samtools sort -o "${dataset}_${extension}_extendmap.bam"
 
-python3 "${params.script_dir}/splitmap_merge.py" "${chimeric}" "${dataset}_${extension}_splitmap.bam" \
-	> "${dataset}_${extension}_splitmap.csv"
+python3 "${params.script_dir}/extendmap_merge.py" "${chimeric}" "${dataset}_${extension}_extendmap.bam" \
+	> "${dataset}_${extension}_extendmap.csv"
 """
 }
 

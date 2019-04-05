@@ -6,6 +6,8 @@ import re
 
 import pysam
 
+import utils
+
 cigar_decoder = {
     0: "M",
     1: "I",
@@ -30,20 +32,13 @@ def find_read_mappings(read_id, sam_file):
             #     logging.debug("Skipping %s (reverse-complement)", read.qname)
             #     continue
 
-            read_metadata = read_header_to_dict(read.qname)
-            rdid = "{}_{}".format(read_metadata["Fq.Id"], read_metadata["Rd.Id"])
+            read_metadata = utils.read_header_to_dict(read.qname)
+            rdid = utils.make_read_id(read_metadata)
             if rdid != read_id:
                 continue
 
             alignments.setdefault(int(read_metadata["Fr.Id"]), list()).append(read)
     return alignments
-
-
-def read_header_to_dict(header):
-    read_metadata = {}
-    for x in str(header).split(";"):
-        read_metadata[x.split(":")[0]] = x.split(":")[1]
-    return read_metadata
 
 
 def mapping_to_read_coverage(read):
@@ -97,9 +92,9 @@ def get_fragment_origin(read):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s]: %(message)s")
+    utils.init_logger()
 
-    # get command line arguments
+    # get command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("read_id", help="Read ID to look for. It is formatted like {Fq.Id}_{Rd.Id}.", metavar="ID",
                         action="store", type=str)
@@ -136,3 +131,4 @@ if __name__ == '__main__':
     seq_fmt = re.sub(r"(GATC)", "\033[1;97;41m\\g<0>\033[0m", seq)
     seq_fmt = re.sub(r"(GAT[^C])|(GA[^T]C)|(G[^A]TC)|([^G]ATC)", "\033[0;97;106m\\g<0>\033[0m", seq_fmt)
     # print(seq_fmt)
+    logging.shutdown()

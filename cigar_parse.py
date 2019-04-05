@@ -5,20 +5,19 @@ import logging
 
 import pysam
 
-cigar_decoder = {
-    0: "M",
-    1: "I",
-    2: "D",
-    3: "N",
-    4: "S",
-    5: "H",
-    6: "P",
-    7: "=",
-    8: "X"
-}
+import utils
 
 
 def parse_cigar(sam_input, sam_output, region, unclipped_cutoff, match_cutoff):
+    """
+    Write the alignments that pass the length/matches cutoff to a new SAM file.
+
+    :param sam_input: Input SAM file.
+    :param sam_output: Output filtered SAM file.
+    :param region: Limit to alignments within this region.
+    :param unclipped_cutoff: Minimum unclipped length of alignments.
+    :param match_cutoff: Minimum fraction of matches in a read.
+    """
     logging.info("Reading %s and writing matching records to %s ...", sam_input, sam_output)
 
     with pysam.AlignmentFile(sam_input, "r") as sam, \
@@ -37,11 +36,13 @@ def parse_cigar(sam_input, sam_output, region, unclipped_cutoff, match_cutoff):
                 pass
 
 
-def to_cigar_string(cigar_tuple):
-    return "".join(map(lambda x: f"{x[1]}{cigar_decoder.get(x[0], '-')}", cigar_tuple))
-
-
 def get_matches(cigar_tuple):
+    """
+    Count the number of matches in a CIGAR tuple.
+
+    :param cigar_tuple: CIGAR tuple from a pysam alignment.
+    :return:
+    """
     total = 0
     matches = 0
     for k, v in cigar_tuple:
@@ -55,6 +56,12 @@ def get_matches(cigar_tuple):
 
 
 def unclipped_length(cigar_tuple):
+    """
+    Number of bases in the CIGAR that are unclipped.
+
+    :param cigar_tuple: CIGAR tuple from a pysam alignment.
+    :return:
+    """
     unclipped = 0
     total = 0
     for k, v in cigar_tuple:
@@ -67,9 +74,9 @@ def unclipped_length(cigar_tuple):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(message)s")
+    utils.init_logger()
 
-    # Get command argument
+    # get command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("input_sam", help="Input SAM/BAM file.", metavar="SAM", action="store", type=str)
     parser.add_argument("output_sam", help="Output BAM file.", metavar="SAM", action="store", type=str)

@@ -9,6 +9,8 @@ import os
 import subprocess
 import sys
 
+import utils
+
 # add current conda environment to the search path
 _exec_env = os.environ.copy()
 _exec_env["PATH"] = "{:s}:{:s}".format(os.path.dirname(sys.executable), _exec_env["PATH"])
@@ -290,9 +292,9 @@ def get_fasta_splits(split_path):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG, format="[%(asctime)s] %(message)s")
+    utils.init_logger()
 
-    # Get command argument
+    # get command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("input_config", help="Input configuration file", metavar="CONFIG", action="store", type=str)
     parser.add_argument("-o", "--output", help="BAM output directory", metavar="DIR", action="store", type=str,

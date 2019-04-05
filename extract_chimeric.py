@@ -11,6 +11,13 @@ import utils
 
 
 def parse_chimeric(sam_input, bam_output, min_mappings):
+    """
+    Extract all reads that have at least min_mappings alignments (split-reads).
+
+    :param sam_input: Input SAM file.
+    :param bam_output: Where to write the final SAM file to.
+    :param min_mappings: Number of alignments of a read cutoff.
+    """
     with NamedTemporaryFile("wb", buffering=0) as tmp:
         logging.info("Created temporary BAM file %s", tmp.name)
         with pysam.AlignmentFile(sam_input) as sam, \
@@ -40,7 +47,7 @@ def parse_chimeric(sam_input, bam_output, min_mappings):
 if __name__ == "__main__":
     utils.init_logger()
 
-    # Get command argument
+    # get command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("input_sam", help="Input SAM/BAM file.", metavar="SAM", action="store", nargs="?",
                         type=argparse.FileType("r"), default=sys.stdin)
