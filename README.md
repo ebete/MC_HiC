@@ -56,7 +56,7 @@ ExtendMap script
 
 
 ## [extendmap_merge.py](extendmap_merge.py)
-...
+Compare the original SAM file with the one created by [extendmap.py](extendmap.py) and print whether ExtendMap improved upon each alignment.
 
 
 ## [extendmap_mergemap.nf](extendmap_mergemap.nf)

@@ -2,6 +2,7 @@
 
 import argparse
 import csv
+import logging
 
 import utils
 
@@ -50,3 +51,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     calculate_2mer_freq(args.input_csv)
+    logging.shutdown()
