@@ -5,8 +5,15 @@ import logging
 
 import pysam
 
+import utils
+
 
 def get_normalised_alignment_score(sam_input):
+    """
+    Calculate an alignment score that has been normalised based on alignment length.
+
+    :param sam_input: SAM file to read.
+    """
     logging.info("Reading file %s ...", sam_input)
 
     print("qname", "mapq", "norm_aln_score", sep="\t")
@@ -29,9 +36,9 @@ def unclipped_length(cigar_tuple):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(message)s")
+    utils.init_logger()
 
-    # Get command line arguments
+    # get command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("input_sam", help="Input SAM/BAM file.", metavar="SAM", action="store", type=str)
     args = parser.parse_args()

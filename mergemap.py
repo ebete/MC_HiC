@@ -29,6 +29,12 @@ def get_mapped_fragments(sam_input):
 
 
 def combine_unmapped_and_mapped(fasta_file, mapped_fragments):
+    """
+    Perform the MergeMap approach on all matching fragments.
+
+    :param fasta_file: Input FASTA file.
+    :param mapped_fragments: Dictionary containing the mapped fragment IDs per read.
+    """
     logging.info("Parsing fragments from %s and comparing to mapped ...", fasta_file)
     total_reads = 0
     unmapped_reads = -1  # initialisation will set it to zero

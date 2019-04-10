@@ -6,6 +6,8 @@ import sys
 
 import pysam
 
+import utils
+
 cigar_decoder = {
     0: "M",
     1: "I",
@@ -38,9 +40,9 @@ def unclipped_length(cigar_tuple):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(message)s")
+    utils.init_logger()
 
-    # Get command argument
+    # get command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("input_sam", help="Input SAM/BAM file.", metavar="SAM", action="store", nargs="?",
                         type=argparse.FileType("r"), default=sys.stdin)

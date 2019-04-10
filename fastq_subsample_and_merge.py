@@ -15,6 +15,18 @@ import utils
 
 def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme="DpnII", fragment_length=-1,
                     fragment_interval=-1, min_length=-1, max_length=-1):
+    """
+    Convert a FASTQ to FASTA and perform digestion/filtering.
+
+    :param fastq_files: List containing input FASTQ files.
+    :param fasta_out: Output FASTA file.
+    :param sample_size: Number of reads to extract from the FASTQ.
+    :param restriction_enzyme: Enzyme(s) to use in digestion.
+    :param fragment_length: Length of fragments in sliding-window fragmentation.
+    :param fragment_interval: Interval between fragments in sliding-window fragmentation.
+    :param min_length: Minimum fragment length.
+    :param max_length: Maximum fragment length.
+    """
     restr_enzyme = getattr(Restriction, restriction_enzyme, None)
 
     if fragment_interval <= 0:
@@ -98,7 +110,7 @@ def subsample_fastq(fastq_files, fasta_out, sample_size=1000, restriction_enzyme
 if __name__ == '__main__':
     utils.init_logger()
 
-    # Get command argument
+    # get command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("output_fa", help="Output location of the FASTA file (gzipped)", metavar="FASTA",
                         action="store", type=str)

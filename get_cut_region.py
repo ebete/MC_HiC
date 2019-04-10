@@ -6,8 +6,19 @@ import logging
 
 from Bio import SeqIO, Restriction, SeqRecord
 
+import utils
+
 
 def get_cut_region(reference_genome, fwd_primer, rev_primer, restriction_enzyme):
+    """
+    Print the viewpoint region in FASTA format based on the primer positions.
+    Will extend up to 2 restriction sites away.
+
+    :param reference_genome: Genome where to extract the viewpoint region from
+    :param fwd_primer: Position of the viewpoint forward primer.
+    :param rev_primer: Position of the viewpoint reverse primer.
+    :param restriction_enzyme: Restriction enzyme used in digestion.
+    """
     restr_enzyme = getattr(Restriction, restriction_enzyme)
     if fwd_primer["chr"] != rev_primer["chr"]:
         raise ValueError("The primers are not located on the same chromosome.")
@@ -36,6 +47,12 @@ def get_cut_region(reference_genome, fwd_primer, rev_primer, restriction_enzyme)
 
 
 def make_locus(position_string):
+    """
+    Convert a locus string (chr:start-end) to a dictionary.
+
+    :param position_string: Genomic locus string.
+    :return: A dictionary representation of the locus.
+    """
     chromosome = position_string.split(":")
     locus = sorted([int(pos) for pos in chromosome[1].split("-")])
     if len(locus) != 2:
@@ -44,9 +61,9 @@ def make_locus(position_string):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(message)s")
+    utils.init_logger()
 
-    # Get command-line arguments
+    # get command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("input_genome", help="Input FASTA genome (gzipped).", metavar="FASTA", action="store", type=str)
     parser.add_argument("forward_primer", help="Start and end of the forward primer. Format like chr1:50-100.",

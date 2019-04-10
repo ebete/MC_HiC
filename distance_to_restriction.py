@@ -6,6 +6,8 @@ import pickle
 
 import pysam
 
+import utils
+
 
 def load_site_index(fname):
     logging.info("Loading restriction site index %s ...", fname)
@@ -14,6 +16,12 @@ def load_site_index(fname):
 
 
 def get_closest_sites(sam_file, enzyme_index):
+    """
+    Find the closest restriction site to each alignment.
+
+    :param sam_file: SAM file to take the alignments from.
+    :param enzyme_index: Restriction enzyme dictionary containing the positions.
+    """
     print("read_id", "start_dist", "end_dist", sep='\t')
 
     with pysam.AlignmentFile(sam_file, "r") as sam:
@@ -38,6 +46,14 @@ def get_closest_sites(sam_file, enzyme_index):
 
 
 def get_distance_to_site(site_pos, enzyme_positions, start_idx=1):
+    """
+    Compute the shortest distance from site_pos to a restriction site.
+
+    :param site_pos: Position to perform the lookup for.
+    :param enzyme_positions: Dictionary containing the positions of restriction enzymes.
+    :param start_idx: Start looking at this restriction site index (reduced search space).
+    :return: The distance and index of the closest restriction site.
+    """
     idx = start_idx if start_idx > 1 else 1
     while idx < len(enzyme_positions) - 1 and (site_pos - enzyme_positions[idx]) > 0:
         idx += 1
@@ -49,16 +65,16 @@ def get_distance_to_site(site_pos, enzyme_positions, start_idx=1):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG, format="[%(asctime)s]: %(message)s")
+    utils.init_logger()
 
-    # Get command argument
+    # get command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("input_index", help="Restriction site index file.", metavar="INDEX", action="store", type=str)
     parser.add_argument("input_sam", help="SAM/BAM file.", metavar="SAM", action="store", type=str)
     args = parser.parse_args()
 
     enzyme_sites = load_site_index(args.input_index)
-    # load and sort mapped fragments
 
+    # load and sort mapped fragments
     logging.info("Finding closest sites for mapped reads in %s ...", args.input_sam)
     get_closest_sites(args.input_sam, enzyme_sites)

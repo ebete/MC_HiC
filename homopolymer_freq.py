@@ -11,6 +11,13 @@ import utils
 
 
 def calculate_homopolymer_counts(fasta_file, min_repeats, min_count):
+    """
+    Count the length and occurrences of homopolymers within a FASTA file.
+
+    :param fasta_file: FASTA file to scan.
+    :param min_repeats: Minimum length of a homopolymer.
+    :param min_count: Minimum observations of a homopolymer.
+    """
     count_matrix = dict()
 
     logging.info("Extracting homopolymers from %s ...", fasta_file)
@@ -51,3 +58,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     calculate_homopolymer_counts(args.input_fasta, args.min_repeats, args.min_count)
+
+    logging.shutdown()

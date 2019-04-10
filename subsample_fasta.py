@@ -8,6 +8,8 @@ import random
 
 from Bio import SeqIO
 
+import utils
+
 random.seed(1337)
 
 
@@ -50,9 +52,9 @@ def subsample_fasta(fasta_file, out_dir, n):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)s: %(message)s")
+    utils.init_logger()
 
-    # Get command argument
+    # get command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("input_fasta", help="Input FASTA file", metavar="FASTA", action="store", type=str)
     parser.add_argument("output_dir", help="Output directory", metavar="DIR", action="store", type=str)

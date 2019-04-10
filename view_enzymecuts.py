@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 
-import gzip
-import re
 import argparse
+import gzip
+import logging
+import re
+
 from Bio import SeqIO
 from Bio.Restriction import DpnII
+
+import utils
 
 # 'GATC' with a single substitution
 patt = re.compile(r"(GAT[^C])|(GA[^T]C)|(G[^A]TC)|([^G]ATC)")
@@ -27,9 +31,13 @@ def view_sites(fasta_file):
 
 
 if __name__ == "__main__":
-    # Get command argument
+    utils.init_logger()
+
+    # get command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("input_fasta", help="Input FASTA file (gzipped).", metavar="INFILE", action="store", type=str)
     args = parser.parse_args()
 
     view_sites(args.input_fasta)
+
+    logging.shutdown()

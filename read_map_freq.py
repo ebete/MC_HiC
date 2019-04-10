@@ -9,6 +9,8 @@ import numpy as np
 import pysam
 import seaborn as sns
 
+import utils
+
 plt.style.use("ggplot")
 matplotlib.rcParams['figure.figsize'] = (16, 8)
 matplotlib.rcParams['figure.dpi'] = 80
@@ -203,10 +205,8 @@ def read_sam(fname, mapq_cutoff=0):
             continue
 
         # fragment id (Fr.Id) should be ignored
-        read_metadata = {}
-        for x in str(read.qname).split(";"):
-            read_metadata[x.split(":")[0]] = x.split(":")[1]
-        rdid = "{}_{}".format(read_metadata["Fq.Id"], read_metadata["Rd.Id"])
+        read_metadata = utils.get_mapping_metadata(read.qname)
+        rdid = utils.make_read_id(read_metadata)
 
         logging.debug("Read %s found at %s:%d-%d", read.qname, read.reference_name, read.reference_start,
                       read.reference_end)
@@ -265,9 +265,9 @@ def export_mapped_regions(reads, outfile):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)s: %(message)s")
+    utils.init_logger()
 
-    # Get command argument
+    # get command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("input_sam", help="Input SAM/BAM file.", metavar="INFILE", action="store", type=str)
     parser.add_argument("-c", "--csv-output", help="Output location of the CSV mapped regions file.", metavar="CSV",
