@@ -145,13 +145,16 @@ def run_minimap(in_fasta, out_bam, params):
         "--no-long-join",  # disable long gap patching heuristic
         "--sr",  # short read alignment mode
         "--frag=yes",  # enable fragment mode
+                                  "-k", params["seed_length"],  # minimised k-mer length
+                                  "-w", params["window_length"],
+                                  # minimizer window size [2/3 of k-mer length]. A minimizer is the smallest k-mer in a window of w consecutive k-mers
         "-A", params["sw_match"],  # match score
         "-B", params["sw_mismatch"],  # mismatch score
         "-O", params["query_gap_open"],  # gap open penalty
         "-E", params["query_gap_extend"],  # gap extension penalty
         "-s", params["score_threshold"],  # output alignment score threshold
-        params["reference"] + ".mmi",  # reference index
-        in_fasta  # FASTA with reads
+                                  params["reference"],  # reference index + ".mmi"
+                                  in_fasta  # FASTA with reads
     ), stdout=subprocess.PIPE, env=_exec_env)
     # @formatter:on
     print(" ".join(align_out.args))
